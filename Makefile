@@ -1,5 +1,3 @@
-default:
-	parcel build index.html -d build/ --no-content-hash --public-url "."
+default: 
+	parcel build src/index.pug -d build/ --no-content-hash --public-url "." --log-level 4 --detailed-report 10
 
-ts:
-	tsc js/index.ts --outFile tsCompile.js --module amd

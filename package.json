@@ -4,15 +4,17 @@
   "description": "",
   "main": "index.js",
   "dependencies": {
-    "parcel-bundler": "^1.12.4",
-    "parcel": "^1.12.4"
+    "parcel": "2.6.2"
   },
   "devDependencies": {
-    "typescript": "^3.7.4"
+    "pug": "^3.0.2"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "",
-  "license": "ISC"
+  "author": "jamesread",
+  "license": "ISC",
+  "browserslist": [
+    "since 2022"
+  ]
 }
