@@ -1,7 +1,7 @@
-import Grid from "./Grid.js";
+import Grid from './Grid.js'
 
 export default class GameState {
   constructor() {
-    this.grid = new Grid();
+    this.grid = new Grid()
   }
 }
