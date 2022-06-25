@@ -8,12 +8,12 @@ export default class Grid {
       this.tileMap[row] = []
 
       for (let col = 0; col < 16; col++) {
-        var t = new Tile()
+        let t = new Tile()
         // deliberately swop coords
         t.row = col
         t.col = row
 
-        if (col == 0 || col == 15 || row == 0 || row == 15) {
+        if (col === 0 || col === 15 || row === 0 || row === 15) {
           t.textureName = 'water.png'
         }
 
