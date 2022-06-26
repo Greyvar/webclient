@@ -1,14 +1,17 @@
 {
   "name": "greyvar-webgl",
   "version": "1.0.0",
+  "type": "module",
   "description": "",
   "dependencies": {
-    "parcel": "2.6.2"
+    "parcel": "2.6.2",
+    "protobufjs": "^6.11.3"
   },
   "devDependencies": {
     "@parcel/transformer-pug": "^2.6.2",
     "@typescript-eslint/eslint-plugin": "^5.29.0",
     "@typescript-eslint/parser": "^5.29.0",
+    "buffer": "^6.0.3",
     "eslint": "^8.18.0",
     "eslint-config-standard": "^17.0.0",
     "eslint-plugin-import": "^2.26.0",

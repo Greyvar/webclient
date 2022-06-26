@@ -20,6 +20,6 @@ export default class TextureCache {
   }
 
   getTile(key) {
-    return this.getTexture('/webclient/res/img/textures/tiles/' + key)
+    return this.getTexture('/greyvar-webclient/res/img/textures/tiles/' + key)
   }
 }

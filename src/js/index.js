@@ -1,4 +1,5 @@
 import GameState from './GameState.js'
+import ServerConnection from './ServerConnection.js'
 import Renderer from './renderer/Renderer.js'
 
 function init() {
@@ -6,6 +7,8 @@ function init() {
   
   window.renderer = new Renderer(window.gameState)
   window.renderer.start()
+
+  window.serverConnection = new ServerConnection()
 }
 
-init()
+document.addEventListener('DOMContentLoaded', init)

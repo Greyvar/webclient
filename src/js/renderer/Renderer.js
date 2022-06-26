@@ -16,6 +16,13 @@ export default class Renderer {
     this.width = 100
     this.height = 100
     this.gameState = gameState
+    this.text = "Disconnected"
+
+    this.onCanvasResized(); // DOMContentLoaded
+
+    window.onresize = () => {
+      this.onCanvasResized()
+    }
   }
 
   getGl() {
@@ -31,16 +38,26 @@ export default class Renderer {
     if (this.ctx == null) {
       throw 'Unable to init 2d'
     } else {
-      console.log('got Gl')
+      console.info('got Gl')
     }
     
     return this.ctx
   }
   
   onCanvasResized() {
+    console.log("resize", this.canvas)
+
+    // Uset offset* values here, as .width and .height are set to whatever is in the initial css.
     this.width = this.canvas.offsetWidth
     this.height = this.canvas.offsetHeight
-    this.drawScale = this.canvas.offsetWidth / 356 // Greyvar uses a logical 256 x 256 resolution, and the renderers "upscale" as needed
+
+    let l = Math.min(this.width, this.height)
+    console.log(this.width, this.height, l)
+
+    this.canvas.width = l;
+    this.canvas.height = l;
+
+    this.drawScale = l / 256; // Greyvar uses a logical 256 x 256 resolution, and the renderers "upscale" as needed
 
     return this.drawScale
   }
@@ -66,6 +83,10 @@ export default class Renderer {
     default:
       break
     }
+  }
+
+  renderConnectionResponse(r) {
+    this.text = "Server: " + r.serverVersion
   }
   
   start() {

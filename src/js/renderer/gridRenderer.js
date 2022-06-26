@@ -7,7 +7,7 @@ export function renderGrid(renderer, gameState) {
 
   renderer.ctx.fillStyle = 'red'
   renderer.ctx.font = (renderer.drawScale * 24) + 'px overpass'
-  renderer.ctx.fillText('Greyvar Tech Demo', 10, 50)
+  renderer.ctx.fillText(renderer.text, 10, 150)
 }
 
 function renderTile(renderer, tile) {

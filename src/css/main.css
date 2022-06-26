@@ -1,11 +1,11 @@
-canvas {
-  width: 100%;
-}
-
-body {
+html, body, canvas {
+  height: 100%;
   margin: 0;
   padding: 0;
   text-align: center;
-  background-color: black;
+}
+
+body {
+  background-color: #dee3e7;
   vertical-align: middle;
 }
