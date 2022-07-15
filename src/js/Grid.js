@@ -15,6 +15,8 @@ export default class Grid {
 
         if (col === 0 || col === 15 || row === 0 || row === 15) {
           t.textureName = 'water.png'
+        } else {
+          t.textureName = 'grass.png'
         }
 
         this.tileMap[row][col] = t
@@ -24,5 +26,9 @@ export default class Grid {
 
   allTiles() {
     return this.tileMap.flat()
+  }
+
+  set(col, row, tile) {
+    this.tileMap[row][col] = tile
   }
 }

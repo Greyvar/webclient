@@ -410,31 +410,33 @@ export const greyvarproto = $root.greyvarproto = (() => {
         return RegistrationRequest;
     })();
 
-    greyvarproto.ServerFrameResponse = (function() {
+    greyvarproto.ServerUpdate = (function() {
 
-        function ServerFrameResponse(p) {
+        function ServerUpdate(p) {
             this.playerFrames = [];
             this.entityPositions = [];
             this.entitySpawns = [];
+            this.entityDefinitions = [];
             if (p)
                 for (var ks = Object.keys(p), i = 0; i < ks.length; ++i)
                     if (p[ks[i]] != null)
                         this[ks[i]] = p[ks[i]];
         }
 
-        ServerFrameResponse.prototype.playerFrames = $util.emptyArray;
-        ServerFrameResponse.prototype.entityPositions = $util.emptyArray;
-        ServerFrameResponse.prototype.entitySpawns = $util.emptyArray;
-        ServerFrameResponse.prototype.playerJoined = null;
-        ServerFrameResponse.prototype.singleTileChange = null;
-        ServerFrameResponse.prototype.grid = null;
-        ServerFrameResponse.prototype.connectionResponse = null;
+        ServerUpdate.prototype.playerFrames = $util.emptyArray;
+        ServerUpdate.prototype.entityPositions = $util.emptyArray;
+        ServerUpdate.prototype.entitySpawns = $util.emptyArray;
+        ServerUpdate.prototype.playerJoined = null;
+        ServerUpdate.prototype.singleTileChange = null;
+        ServerUpdate.prototype.grid = null;
+        ServerUpdate.prototype.connectionResponse = null;
+        ServerUpdate.prototype.entityDefinitions = $util.emptyArray;
 
-        ServerFrameResponse.create = function create(properties) {
-            return new ServerFrameResponse(properties);
+        ServerUpdate.create = function create(properties) {
+            return new ServerUpdate(properties);
         };
 
-        ServerFrameResponse.encode = function encode(m, w) {
+        ServerUpdate.encode = function encode(m, w) {
             if (!w)
                 w = $Writer.create();
             if (m.playerFrames != null && m.playerFrames.length) {
@@ -457,17 +459,21 @@ export const greyvarproto = $root.greyvarproto = (() => {
                 $root.greyvarproto.Grid.encode(m.grid, w.uint32(50).fork()).ldelim();
             if (m.connectionResponse != null && Object.hasOwnProperty.call(m, "connectionResponse"))
                 $root.greyvarproto.ConnectionResponse.encode(m.connectionResponse, w.uint32(58).fork()).ldelim();
+            if (m.entityDefinitions != null && m.entityDefinitions.length) {
+                for (var i = 0; i < m.entityDefinitions.length; ++i)
+                    $root.greyvarproto.EntityDefinition.encode(m.entityDefinitions[i], w.uint32(66).fork()).ldelim();
+            }
             return w;
         };
 
-        ServerFrameResponse.encodeDelimited = function encodeDelimited(message, writer) {
+        ServerUpdate.encodeDelimited = function encodeDelimited(message, writer) {
             return this.encode(message, writer).ldelim();
         };
 
-        ServerFrameResponse.decode = function decode(r, l) {
+        ServerUpdate.decode = function decode(r, l) {
             if (!(r instanceof $Reader))
                 r = $Reader.create(r);
-            var c = l === undefined ? r.len : r.pos + l, m = new $root.greyvarproto.ServerFrameResponse();
+            var c = l === undefined ? r.len : r.pos + l, m = new $root.greyvarproto.ServerUpdate();
             while (r.pos < c) {
                 var t = r.uint32();
                 switch (t >>> 3) {
@@ -498,6 +504,11 @@ export const greyvarproto = $root.greyvarproto = (() => {
                 case 7:
                     m.connectionResponse = $root.greyvarproto.ConnectionResponse.decode(r, r.uint32());
                     break;
+                case 8:
+                    if (!(m.entityDefinitions && m.entityDefinitions.length))
+                        m.entityDefinitions = [];
+                    m.entityDefinitions.push($root.greyvarproto.EntityDefinition.decode(r, r.uint32()));
+                    break;
                 default:
                     r.skipType(t & 7);
                     break;
@@ -506,13 +517,13 @@ export const greyvarproto = $root.greyvarproto = (() => {
             return m;
         };
 
-        ServerFrameResponse.decodeDelimited = function decodeDelimited(reader) {
+        ServerUpdate.decodeDelimited = function decodeDelimited(reader) {
             if (!(reader instanceof $Reader))
                 reader = new $Reader(reader);
             return this.decode(reader, reader.uint32());
         };
 
-        ServerFrameResponse.verify = function verify(m) {
+        ServerUpdate.verify = function verify(m) {
             if (typeof m !== "object" || m === null)
                 return "object expected";
             if (m.playerFrames != null && m.hasOwnProperty("playerFrames")) {
@@ -576,67 +587,88 @@ export const greyvarproto = $root.greyvarproto = (() => {
                         return "connectionResponse." + e;
                 }
             }
+            if (m.entityDefinitions != null && m.hasOwnProperty("entityDefinitions")) {
+                if (!Array.isArray(m.entityDefinitions))
+                    return "entityDefinitions: array expected";
+                for (var i = 0; i < m.entityDefinitions.length; ++i) {
+                    {
+                        var e = $root.greyvarproto.EntityDefinition.verify(m.entityDefinitions[i]);
+                        if (e)
+                            return "entityDefinitions." + e;
+                    }
+                }
+            }
             return null;
         };
 
-        ServerFrameResponse.fromObject = function fromObject(d) {
-            if (d instanceof $root.greyvarproto.ServerFrameResponse)
+        ServerUpdate.fromObject = function fromObject(d) {
+            if (d instanceof $root.greyvarproto.ServerUpdate)
                 return d;
-            var m = new $root.greyvarproto.ServerFrameResponse();
+            var m = new $root.greyvarproto.ServerUpdate();
             if (d.playerFrames) {
                 if (!Array.isArray(d.playerFrames))
-                    throw TypeError(".greyvarproto.ServerFrameResponse.playerFrames: array expected");
+                    throw TypeError(".greyvarproto.ServerUpdate.playerFrames: array expected");
                 m.playerFrames = [];
                 for (var i = 0; i < d.playerFrames.length; ++i) {
                     if (typeof d.playerFrames[i] !== "object")
-                        throw TypeError(".greyvarproto.ServerFrameResponse.playerFrames: object expected");
+                        throw TypeError(".greyvarproto.ServerUpdate.playerFrames: object expected");
                     m.playerFrames[i] = $root.greyvarproto.PlayerFrame.fromObject(d.playerFrames[i]);
                 }
             }
             if (d.entityPositions) {
                 if (!Array.isArray(d.entityPositions))
-                    throw TypeError(".greyvarproto.ServerFrameResponse.entityPositions: array expected");
+                    throw TypeError(".greyvarproto.ServerUpdate.entityPositions: array expected");
                 m.entityPositions = [];
                 for (var i = 0; i < d.entityPositions.length; ++i) {
                     if (typeof d.entityPositions[i] !== "object")
-                        throw TypeError(".greyvarproto.ServerFrameResponse.entityPositions: object expected");
+                        throw TypeError(".greyvarproto.ServerUpdate.entityPositions: object expected");
                     m.entityPositions[i] = $root.greyvarproto.EntityPosition.fromObject(d.entityPositions[i]);
                 }
             }
             if (d.entitySpawns) {
                 if (!Array.isArray(d.entitySpawns))
-                    throw TypeError(".greyvarproto.ServerFrameResponse.entitySpawns: array expected");
+                    throw TypeError(".greyvarproto.ServerUpdate.entitySpawns: array expected");
                 m.entitySpawns = [];
                 for (var i = 0; i < d.entitySpawns.length; ++i) {
                     if (typeof d.entitySpawns[i] !== "object")
-                        throw TypeError(".greyvarproto.ServerFrameResponse.entitySpawns: object expected");
+                        throw TypeError(".greyvarproto.ServerUpdate.entitySpawns: object expected");
                     m.entitySpawns[i] = $root.greyvarproto.EntitySpawn.fromObject(d.entitySpawns[i]);
                 }
             }
             if (d.playerJoined != null) {
                 if (typeof d.playerJoined !== "object")
-                    throw TypeError(".greyvarproto.ServerFrameResponse.playerJoined: object expected");
+                    throw TypeError(".greyvarproto.ServerUpdate.playerJoined: object expected");
                 m.playerJoined = $root.greyvarproto.PlayerJoined.fromObject(d.playerJoined);
             }
             if (d.singleTileChange != null) {
                 if (typeof d.singleTileChange !== "object")
-                    throw TypeError(".greyvarproto.ServerFrameResponse.singleTileChange: object expected");
+                    throw TypeError(".greyvarproto.ServerUpdate.singleTileChange: object expected");
                 m.singleTileChange = $root.greyvarproto.Tile.fromObject(d.singleTileChange);
             }
             if (d.grid != null) {
                 if (typeof d.grid !== "object")
-                    throw TypeError(".greyvarproto.ServerFrameResponse.grid: object expected");
+                    throw TypeError(".greyvarproto.ServerUpdate.grid: object expected");
                 m.grid = $root.greyvarproto.Grid.fromObject(d.grid);
             }
             if (d.connectionResponse != null) {
                 if (typeof d.connectionResponse !== "object")
-                    throw TypeError(".greyvarproto.ServerFrameResponse.connectionResponse: object expected");
+                    throw TypeError(".greyvarproto.ServerUpdate.connectionResponse: object expected");
                 m.connectionResponse = $root.greyvarproto.ConnectionResponse.fromObject(d.connectionResponse);
+            }
+            if (d.entityDefinitions) {
+                if (!Array.isArray(d.entityDefinitions))
+                    throw TypeError(".greyvarproto.ServerUpdate.entityDefinitions: array expected");
+                m.entityDefinitions = [];
+                for (var i = 0; i < d.entityDefinitions.length; ++i) {
+                    if (typeof d.entityDefinitions[i] !== "object")
+                        throw TypeError(".greyvarproto.ServerUpdate.entityDefinitions: object expected");
+                    m.entityDefinitions[i] = $root.greyvarproto.EntityDefinition.fromObject(d.entityDefinitions[i]);
+                }
             }
             return m;
         };
 
-        ServerFrameResponse.toObject = function toObject(m, o) {
+        ServerUpdate.toObject = function toObject(m, o) {
             if (!o)
                 o = {};
             var d = {};
@@ -644,6 +676,7 @@ export const greyvarproto = $root.greyvarproto = (() => {
                 d.playerFrames = [];
                 d.entityPositions = [];
                 d.entitySpawns = [];
+                d.entityDefinitions = [];
             }
             if (o.defaults) {
                 d.playerJoined = null;
@@ -681,14 +714,20 @@ export const greyvarproto = $root.greyvarproto = (() => {
             if (m.connectionResponse != null && m.hasOwnProperty("connectionResponse")) {
                 d.connectionResponse = $root.greyvarproto.ConnectionResponse.toObject(m.connectionResponse, o);
             }
+            if (m.entityDefinitions && m.entityDefinitions.length) {
+                d.entityDefinitions = [];
+                for (var j = 0; j < m.entityDefinitions.length; ++j) {
+                    d.entityDefinitions[j] = $root.greyvarproto.EntityDefinition.toObject(m.entityDefinitions[j], o);
+                }
+            }
             return d;
         };
 
-        ServerFrameResponse.prototype.toJSON = function toJSON() {
+        ServerUpdate.prototype.toJSON = function toJSON() {
             return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
         };
 
-        return ServerFrameResponse;
+        return ServerUpdate;
     })();
 
     greyvarproto.PlayerFrame = (function() {
@@ -1068,6 +1107,128 @@ export const greyvarproto = $root.greyvarproto = (() => {
         return EntityPosition;
     })();
 
+    greyvarproto.EntityStateChange = (function() {
+
+        function EntityStateChange(p) {
+            if (p)
+                for (var ks = Object.keys(p), i = 0; i < ks.length; ++i)
+                    if (p[ks[i]] != null)
+                        this[ks[i]] = p[ks[i]];
+        }
+
+        EntityStateChange.prototype.entityId = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+        EntityStateChange.prototype.newState = "";
+
+        EntityStateChange.create = function create(properties) {
+            return new EntityStateChange(properties);
+        };
+
+        EntityStateChange.encode = function encode(m, w) {
+            if (!w)
+                w = $Writer.create();
+            if (m.entityId != null && Object.hasOwnProperty.call(m, "entityId"))
+                w.uint32(8).int64(m.entityId);
+            if (m.newState != null && Object.hasOwnProperty.call(m, "newState"))
+                w.uint32(18).string(m.newState);
+            return w;
+        };
+
+        EntityStateChange.encodeDelimited = function encodeDelimited(message, writer) {
+            return this.encode(message, writer).ldelim();
+        };
+
+        EntityStateChange.decode = function decode(r, l) {
+            if (!(r instanceof $Reader))
+                r = $Reader.create(r);
+            var c = l === undefined ? r.len : r.pos + l, m = new $root.greyvarproto.EntityStateChange();
+            while (r.pos < c) {
+                var t = r.uint32();
+                switch (t >>> 3) {
+                case 1:
+                    m.entityId = r.int64();
+                    break;
+                case 2:
+                    m.newState = r.string();
+                    break;
+                default:
+                    r.skipType(t & 7);
+                    break;
+                }
+            }
+            return m;
+        };
+
+        EntityStateChange.decodeDelimited = function decodeDelimited(reader) {
+            if (!(reader instanceof $Reader))
+                reader = new $Reader(reader);
+            return this.decode(reader, reader.uint32());
+        };
+
+        EntityStateChange.verify = function verify(m) {
+            if (typeof m !== "object" || m === null)
+                return "object expected";
+            if (m.entityId != null && m.hasOwnProperty("entityId")) {
+                if (!$util.isInteger(m.entityId) && !(m.entityId && $util.isInteger(m.entityId.low) && $util.isInteger(m.entityId.high)))
+                    return "entityId: integer|Long expected";
+            }
+            if (m.newState != null && m.hasOwnProperty("newState")) {
+                if (!$util.isString(m.newState))
+                    return "newState: string expected";
+            }
+            return null;
+        };
+
+        EntityStateChange.fromObject = function fromObject(d) {
+            if (d instanceof $root.greyvarproto.EntityStateChange)
+                return d;
+            var m = new $root.greyvarproto.EntityStateChange();
+            if (d.entityId != null) {
+                if ($util.Long)
+                    (m.entityId = $util.Long.fromValue(d.entityId)).unsigned = false;
+                else if (typeof d.entityId === "string")
+                    m.entityId = parseInt(d.entityId, 10);
+                else if (typeof d.entityId === "number")
+                    m.entityId = d.entityId;
+                else if (typeof d.entityId === "object")
+                    m.entityId = new $util.LongBits(d.entityId.low >>> 0, d.entityId.high >>> 0).toNumber();
+            }
+            if (d.newState != null) {
+                m.newState = String(d.newState);
+            }
+            return m;
+        };
+
+        EntityStateChange.toObject = function toObject(m, o) {
+            if (!o)
+                o = {};
+            var d = {};
+            if (o.defaults) {
+                if ($util.Long) {
+                    var n = new $util.Long(0, 0, false);
+                    d.entityId = o.longs === String ? n.toString() : o.longs === Number ? n.toNumber() : n;
+                } else
+                    d.entityId = o.longs === String ? "0" : 0;
+                d.newState = "";
+            }
+            if (m.entityId != null && m.hasOwnProperty("entityId")) {
+                if (typeof m.entityId === "number")
+                    d.entityId = o.longs === String ? String(m.entityId) : m.entityId;
+                else
+                    d.entityId = o.longs === String ? $util.Long.prototype.toString.call(m.entityId) : o.longs === Number ? new $util.LongBits(m.entityId.low >>> 0, m.entityId.high >>> 0).toNumber() : m.entityId;
+            }
+            if (m.newState != null && m.hasOwnProperty("newState")) {
+                d.newState = m.newState;
+            }
+            return d;
+        };
+
+        EntityStateChange.prototype.toJSON = function toJSON() {
+            return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
+        };
+
+        return EntityStateChange;
+    })();
+
     greyvarproto.EntitySpawn = (function() {
 
         function EntitySpawn(p) {
@@ -1084,6 +1245,7 @@ export const greyvarproto = $root.greyvarproto = (() => {
         EntitySpawn.prototype.h = 0;
         EntitySpawn.prototype.texture = "";
         EntitySpawn.prototype.primaryColor = 0;
+        EntitySpawn.prototype.definition = "";
 
         EntitySpawn.create = function create(properties) {
             return new EntitySpawn(properties);
@@ -1106,6 +1268,8 @@ export const greyvarproto = $root.greyvarproto = (() => {
                 w.uint32(50).string(m.texture);
             if (m.primaryColor != null && Object.hasOwnProperty.call(m, "primaryColor"))
                 w.uint32(56).uint32(m.primaryColor);
+            if (m.definition != null && Object.hasOwnProperty.call(m, "definition"))
+                w.uint32(74).string(m.definition);
             return w;
         };
 
@@ -1140,6 +1304,9 @@ export const greyvarproto = $root.greyvarproto = (() => {
                     break;
                 case 7:
                     m.primaryColor = r.uint32();
+                    break;
+                case 9:
+                    m.definition = r.string();
                     break;
                 default:
                     r.skipType(t & 7);
@@ -1186,6 +1353,10 @@ export const greyvarproto = $root.greyvarproto = (() => {
                 if (!$util.isInteger(m.primaryColor))
                     return "primaryColor: integer expected";
             }
+            if (m.definition != null && m.hasOwnProperty("definition")) {
+                if (!$util.isString(m.definition))
+                    return "definition: string expected";
+            }
             return null;
         };
 
@@ -1221,6 +1392,9 @@ export const greyvarproto = $root.greyvarproto = (() => {
             if (d.primaryColor != null) {
                 m.primaryColor = d.primaryColor >>> 0;
             }
+            if (d.definition != null) {
+                m.definition = String(d.definition);
+            }
             return m;
         };
 
@@ -1240,6 +1414,7 @@ export const greyvarproto = $root.greyvarproto = (() => {
                 d.h = 0;
                 d.texture = "";
                 d.primaryColor = 0;
+                d.definition = "";
             }
             if (m.entityId != null && m.hasOwnProperty("entityId")) {
                 if (typeof m.entityId === "number")
@@ -1265,6 +1440,9 @@ export const greyvarproto = $root.greyvarproto = (() => {
             if (m.primaryColor != null && m.hasOwnProperty("primaryColor")) {
                 d.primaryColor = m.primaryColor;
             }
+            if (m.definition != null && m.hasOwnProperty("definition")) {
+                d.definition = m.definition;
+            }
             return d;
         };
 
@@ -1273,6 +1451,289 @@ export const greyvarproto = $root.greyvarproto = (() => {
         };
 
         return EntitySpawn;
+    })();
+
+    greyvarproto.EntityDefinition = (function() {
+
+        function EntityDefinition(p) {
+            this.states = [];
+            if (p)
+                for (var ks = Object.keys(p), i = 0; i < ks.length; ++i)
+                    if (p[ks[i]] != null)
+                        this[ks[i]] = p[ks[i]];
+        }
+
+        EntityDefinition.prototype.name = "";
+        EntityDefinition.prototype.initialState = "";
+        EntityDefinition.prototype.states = $util.emptyArray;
+
+        EntityDefinition.create = function create(properties) {
+            return new EntityDefinition(properties);
+        };
+
+        EntityDefinition.encode = function encode(m, w) {
+            if (!w)
+                w = $Writer.create();
+            if (m.name != null && Object.hasOwnProperty.call(m, "name"))
+                w.uint32(10).string(m.name);
+            if (m.initialState != null && Object.hasOwnProperty.call(m, "initialState"))
+                w.uint32(18).string(m.initialState);
+            if (m.states != null && m.states.length) {
+                for (var i = 0; i < m.states.length; ++i)
+                    $root.greyvarproto.EntityState.encode(m.states[i], w.uint32(26).fork()).ldelim();
+            }
+            return w;
+        };
+
+        EntityDefinition.encodeDelimited = function encodeDelimited(message, writer) {
+            return this.encode(message, writer).ldelim();
+        };
+
+        EntityDefinition.decode = function decode(r, l) {
+            if (!(r instanceof $Reader))
+                r = $Reader.create(r);
+            var c = l === undefined ? r.len : r.pos + l, m = new $root.greyvarproto.EntityDefinition();
+            while (r.pos < c) {
+                var t = r.uint32();
+                switch (t >>> 3) {
+                case 1:
+                    m.name = r.string();
+                    break;
+                case 2:
+                    m.initialState = r.string();
+                    break;
+                case 3:
+                    if (!(m.states && m.states.length))
+                        m.states = [];
+                    m.states.push($root.greyvarproto.EntityState.decode(r, r.uint32()));
+                    break;
+                default:
+                    r.skipType(t & 7);
+                    break;
+                }
+            }
+            return m;
+        };
+
+        EntityDefinition.decodeDelimited = function decodeDelimited(reader) {
+            if (!(reader instanceof $Reader))
+                reader = new $Reader(reader);
+            return this.decode(reader, reader.uint32());
+        };
+
+        EntityDefinition.verify = function verify(m) {
+            if (typeof m !== "object" || m === null)
+                return "object expected";
+            if (m.name != null && m.hasOwnProperty("name")) {
+                if (!$util.isString(m.name))
+                    return "name: string expected";
+            }
+            if (m.initialState != null && m.hasOwnProperty("initialState")) {
+                if (!$util.isString(m.initialState))
+                    return "initialState: string expected";
+            }
+            if (m.states != null && m.hasOwnProperty("states")) {
+                if (!Array.isArray(m.states))
+                    return "states: array expected";
+                for (var i = 0; i < m.states.length; ++i) {
+                    {
+                        var e = $root.greyvarproto.EntityState.verify(m.states[i]);
+                        if (e)
+                            return "states." + e;
+                    }
+                }
+            }
+            return null;
+        };
+
+        EntityDefinition.fromObject = function fromObject(d) {
+            if (d instanceof $root.greyvarproto.EntityDefinition)
+                return d;
+            var m = new $root.greyvarproto.EntityDefinition();
+            if (d.name != null) {
+                m.name = String(d.name);
+            }
+            if (d.initialState != null) {
+                m.initialState = String(d.initialState);
+            }
+            if (d.states) {
+                if (!Array.isArray(d.states))
+                    throw TypeError(".greyvarproto.EntityDefinition.states: array expected");
+                m.states = [];
+                for (var i = 0; i < d.states.length; ++i) {
+                    if (typeof d.states[i] !== "object")
+                        throw TypeError(".greyvarproto.EntityDefinition.states: object expected");
+                    m.states[i] = $root.greyvarproto.EntityState.fromObject(d.states[i]);
+                }
+            }
+            return m;
+        };
+
+        EntityDefinition.toObject = function toObject(m, o) {
+            if (!o)
+                o = {};
+            var d = {};
+            if (o.arrays || o.defaults) {
+                d.states = [];
+            }
+            if (o.defaults) {
+                d.name = "";
+                d.initialState = "";
+            }
+            if (m.name != null && m.hasOwnProperty("name")) {
+                d.name = m.name;
+            }
+            if (m.initialState != null && m.hasOwnProperty("initialState")) {
+                d.initialState = m.initialState;
+            }
+            if (m.states && m.states.length) {
+                d.states = [];
+                for (var j = 0; j < m.states.length; ++j) {
+                    d.states[j] = $root.greyvarproto.EntityState.toObject(m.states[j], o);
+                }
+            }
+            return d;
+        };
+
+        EntityDefinition.prototype.toJSON = function toJSON() {
+            return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
+        };
+
+        return EntityDefinition;
+    })();
+
+    greyvarproto.EntityState = (function() {
+
+        function EntityState(p) {
+            this.frames = [];
+            if (p)
+                for (var ks = Object.keys(p), i = 0; i < ks.length; ++i)
+                    if (p[ks[i]] != null)
+                        this[ks[i]] = p[ks[i]];
+        }
+
+        EntityState.prototype.name = "";
+        EntityState.prototype.frames = $util.emptyArray;
+
+        EntityState.create = function create(properties) {
+            return new EntityState(properties);
+        };
+
+        EntityState.encode = function encode(m, w) {
+            if (!w)
+                w = $Writer.create();
+            if (m.name != null && Object.hasOwnProperty.call(m, "name"))
+                w.uint32(10).string(m.name);
+            if (m.frames != null && m.frames.length) {
+                w.uint32(18).fork();
+                for (var i = 0; i < m.frames.length; ++i)
+                    w.int32(m.frames[i]);
+                w.ldelim();
+            }
+            return w;
+        };
+
+        EntityState.encodeDelimited = function encodeDelimited(message, writer) {
+            return this.encode(message, writer).ldelim();
+        };
+
+        EntityState.decode = function decode(r, l) {
+            if (!(r instanceof $Reader))
+                r = $Reader.create(r);
+            var c = l === undefined ? r.len : r.pos + l, m = new $root.greyvarproto.EntityState();
+            while (r.pos < c) {
+                var t = r.uint32();
+                switch (t >>> 3) {
+                case 1:
+                    m.name = r.string();
+                    break;
+                case 2:
+                    if (!(m.frames && m.frames.length))
+                        m.frames = [];
+                    if ((t & 7) === 2) {
+                        var c2 = r.uint32() + r.pos;
+                        while (r.pos < c2)
+                            m.frames.push(r.int32());
+                    } else
+                        m.frames.push(r.int32());
+                    break;
+                default:
+                    r.skipType(t & 7);
+                    break;
+                }
+            }
+            return m;
+        };
+
+        EntityState.decodeDelimited = function decodeDelimited(reader) {
+            if (!(reader instanceof $Reader))
+                reader = new $Reader(reader);
+            return this.decode(reader, reader.uint32());
+        };
+
+        EntityState.verify = function verify(m) {
+            if (typeof m !== "object" || m === null)
+                return "object expected";
+            if (m.name != null && m.hasOwnProperty("name")) {
+                if (!$util.isString(m.name))
+                    return "name: string expected";
+            }
+            if (m.frames != null && m.hasOwnProperty("frames")) {
+                if (!Array.isArray(m.frames))
+                    return "frames: array expected";
+                for (var i = 0; i < m.frames.length; ++i) {
+                    if (!$util.isInteger(m.frames[i]))
+                        return "frames: integer[] expected";
+                }
+            }
+            return null;
+        };
+
+        EntityState.fromObject = function fromObject(d) {
+            if (d instanceof $root.greyvarproto.EntityState)
+                return d;
+            var m = new $root.greyvarproto.EntityState();
+            if (d.name != null) {
+                m.name = String(d.name);
+            }
+            if (d.frames) {
+                if (!Array.isArray(d.frames))
+                    throw TypeError(".greyvarproto.EntityState.frames: array expected");
+                m.frames = [];
+                for (var i = 0; i < d.frames.length; ++i) {
+                    m.frames[i] = d.frames[i] | 0;
+                }
+            }
+            return m;
+        };
+
+        EntityState.toObject = function toObject(m, o) {
+            if (!o)
+                o = {};
+            var d = {};
+            if (o.arrays || o.defaults) {
+                d.frames = [];
+            }
+            if (o.defaults) {
+                d.name = "";
+            }
+            if (m.name != null && m.hasOwnProperty("name")) {
+                d.name = m.name;
+            }
+            if (m.frames && m.frames.length) {
+                d.frames = [];
+                for (var j = 0; j < m.frames.length; ++j) {
+                    d.frames[j] = m.frames[j];
+                }
+            }
+            return d;
+        };
+
+        EntityState.prototype.toJSON = function toJSON() {
+            return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
+        };
+
+        return EntityState;
     })();
 
     greyvarproto.PlayerQuit = (function() {
