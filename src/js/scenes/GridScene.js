@@ -6,8 +6,9 @@ export default class GridScene extends Phaser.Scene {
 
   entities = {}
 
-  setGrid(grid) {
-    this.grid = grid
+  constructor(grid) {
+    super(new Date().toString())
+    this.grid = grid;
   }
 
 
@@ -42,6 +43,12 @@ export default class GridScene extends Phaser.Scene {
   }
 
   create() {
+    //this.cameras.main.setSize(320, 256)
+
+//    this.cameras.main.setBounds(0, 0, 100, 100);
+//    this.cameras.main.centerOn(200, 200);
+//    this.cameras.main.setZoom(2)
+
     this.anims.create({
       key: 'water',
       frames: this.anims.generateFrameNames('water', { prefix: '', end: 2}), 
@@ -50,6 +57,7 @@ export default class GridScene extends Phaser.Scene {
     })
 
     this.cursors = this.input.keyboard.createCursorKeys()
+    this.pointer = this.input.activePointer;
 
     this.renderGrid()
 
@@ -59,7 +67,8 @@ export default class GridScene extends Phaser.Scene {
   update() {
     this.updateCursorKeys()
 //    this.renderGrid()
-    this.renderEntities()
+//    this.renderEntities()
+
   }
 
   updateCursorKeys() {
@@ -67,6 +76,16 @@ export default class GridScene extends Phaser.Scene {
     if (this.cursors.right.isDown)  window.serverConnection.sendMoveRequest({x: 1, y: 0});
     if (this.cursors.up.isDown)     window.serverConnection.sendMoveRequest({x: 0, y: -1});
     if (this.cursors.down.isDown)   window.serverConnection.sendMoveRequest({x: 0, y: 1});
+
+    let p = this.input.activePointer
+
+    if (p.isDown) {
+      if (!this.scale.fullscreen.active) {
+//        this.scale.startFullscreen()
+      }
+
+      window.serverConnection.sendMoveRequest({x: 0, y: 1});
+    }
   }
 
   renderEntities() {
@@ -82,6 +101,8 @@ export default class GridScene extends Phaser.Scene {
       if (ent.texture == "ss_playerBob.png") {
         img = this.physics.add.sprite(ent.x, ent.y, ent.texture)
         img.setCollideWorldBounds(true)
+
+        this.cameras.main.startFollow(img, false, 0.05, 0.05)
       } else {
         img = this.add.sprite(ent.x, ent.y, ent.texture)
       }
@@ -89,7 +110,7 @@ export default class GridScene extends Phaser.Scene {
       this.createEntityAnimations(img, ent.texture)
 
       img.setOrigin(0)
-      img.play('idle')
+//      img.play('idle')
 
       ent.img = img
 
@@ -155,9 +176,19 @@ export default class GridScene extends Phaser.Scene {
 
     if (tile.textureName == "water.png") {
       const water = this.add.sprite((tile.col*tileSize), (tile.row*tileSize), 'water').setOrigin(0).play('water')
+
       this.layerGrid.add(water)
       return
     }
+
+
+    if (true) {
+//      this.add.text((tile.col * tileSize), (tile.row*tileSize), tile.textureName, {fontFamily: "sans-serif", fontSize: 8, color: "black"})
+
+      //this.add.text(0, 0, 'Hello World', { fontFamily: 'Georgia, "Goudy Bookletter 1911", Times, serif' });
+
+    }
+
     const tex = this.add.image(posX, posY, tile.textureName)
     this.layerGrid.add(tex)
     tex.angle = tile.textureRotation
@@ -176,7 +207,7 @@ export default class GridScene extends Phaser.Scene {
   }
 
   onEntitySpawn(ent) {
-    console.log("spawn", ent.texture, ent.entityId)
+    console.log("ent spawn", ent.texture, ent.entityId)
     ent.img = null
   
     this.entities[ent.entityId] = ent

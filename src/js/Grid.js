@@ -1,19 +1,20 @@
 import Tile from './Tile.js'
 
 export default class Grid {
-  constructor() {
+  constructor(rowCount, colCount) {
     this.tileMap = []
+    this.rowCount = rowCount
+    this.colCount = colCount
 
-    for (let row = 0; row < 16; row++) {
+    for (let row = 0; row < rowCount; row++) {
       this.tileMap[row] = []
 
-      for (let col = 0; col < 16; col++) {
+      for (let col = 0; col < colCount; col++) {
         let t = new Tile()
-        // deliberately swop coords
-        t.row = col
-        t.col = row
+        t.row = row
+        t.col = col
 
-        if (col === 0 || col === 15 || row === 0 || row === 15) {
+        if (col === 0 || col === colCount - 1 || row === 0 || row === rowCount - 1) {
           t.textureName = 'water.png'
         } else {
           t.textureName = 'grass.png'
@@ -22,13 +23,20 @@ export default class Grid {
         this.tileMap[row][col] = t
       }
     }
+
+    console.log(this.tileMap)
   }
 
   allTiles() {
     return this.tileMap.flat()
   }
 
-  set(col, row, tile) {
+  set(row, col, tile) {
+    if (this.tileMap[row] == undefined) {
+      console.error(col, row)
+      return
+    }
+
     this.tileMap[row][col] = tile
   }
 }

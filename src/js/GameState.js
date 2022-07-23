@@ -3,26 +3,27 @@ import GridScene from './scenes/GridScene.js'
 import SplashScene from './scenes/SplashScene.js'
 
 export default class GameState {
-  currentScene = null;
   entdefs = {}
+  hackHasLoadedInitialGrid = false;
+  gridScene = null
+  grid = null
 
   constructor() {
-    this.grid = new Grid()
-    this.gridScene = null
-
-    this.currentScene = new SplashScene();
   }
 
   addMessage(m) {
   }
 
   onNewGrid(g) {
-    let gs = new GridScene()
-    gs.setGrid(g)
+    let gs = new GridScene(g)
 
-    window.phaser.scene.add('grid', gs, true)
+    let k = new Date().toString()
+    window.phaser.scene.add(k, gs, true)
 
+    this.grid = g
     this.gridScene = gs
+
+    window.resizeGame()
   }
 
   onPlayerJoined(plj) {
@@ -35,6 +36,7 @@ export default class GameState {
 
   onEntityPosition(entpos) {
     this.gridScene.onEntityPosition(entpos)
+
   }
 
   onEntdef(entdef) {

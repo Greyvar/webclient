@@ -1466,6 +1466,7 @@ export const greyvarproto = $root.greyvarproto = (() => {
         EntityDefinition.prototype.name = "";
         EntityDefinition.prototype.initialState = "";
         EntityDefinition.prototype.states = $util.emptyArray;
+        EntityDefinition.prototype.texture = "";
 
         EntityDefinition.create = function create(properties) {
             return new EntityDefinition(properties);
@@ -1482,6 +1483,8 @@ export const greyvarproto = $root.greyvarproto = (() => {
                 for (var i = 0; i < m.states.length; ++i)
                     $root.greyvarproto.EntityState.encode(m.states[i], w.uint32(26).fork()).ldelim();
             }
+            if (m.texture != null && Object.hasOwnProperty.call(m, "texture"))
+                w.uint32(34).string(m.texture);
             return w;
         };
 
@@ -1506,6 +1509,9 @@ export const greyvarproto = $root.greyvarproto = (() => {
                     if (!(m.states && m.states.length))
                         m.states = [];
                     m.states.push($root.greyvarproto.EntityState.decode(r, r.uint32()));
+                    break;
+                case 4:
+                    m.texture = r.string();
                     break;
                 default:
                     r.skipType(t & 7);
@@ -1543,6 +1549,10 @@ export const greyvarproto = $root.greyvarproto = (() => {
                     }
                 }
             }
+            if (m.texture != null && m.hasOwnProperty("texture")) {
+                if (!$util.isString(m.texture))
+                    return "texture: string expected";
+            }
             return null;
         };
 
@@ -1566,6 +1576,9 @@ export const greyvarproto = $root.greyvarproto = (() => {
                     m.states[i] = $root.greyvarproto.EntityState.fromObject(d.states[i]);
                 }
             }
+            if (d.texture != null) {
+                m.texture = String(d.texture);
+            }
             return m;
         };
 
@@ -1579,6 +1592,7 @@ export const greyvarproto = $root.greyvarproto = (() => {
             if (o.defaults) {
                 d.name = "";
                 d.initialState = "";
+                d.texture = "";
             }
             if (m.name != null && m.hasOwnProperty("name")) {
                 d.name = m.name;
@@ -1591,6 +1605,9 @@ export const greyvarproto = $root.greyvarproto = (() => {
                 for (var j = 0; j < m.states.length; ++j) {
                     d.states[j] = $root.greyvarproto.EntityState.toObject(m.states[j], o);
                 }
+            }
+            if (m.texture != null && m.hasOwnProperty("texture")) {
+                d.texture = m.texture;
             }
             return d;
         };
@@ -2330,6 +2347,8 @@ export const greyvarproto = $root.greyvarproto = (() => {
 
         Grid.prototype.title = "";
         Grid.prototype.tiles = $util.emptyArray;
+        Grid.prototype.rowCount = 0;
+        Grid.prototype.colCount = 0;
 
         Grid.create = function create(properties) {
             return new Grid(properties);
@@ -2344,6 +2363,10 @@ export const greyvarproto = $root.greyvarproto = (() => {
                 for (var i = 0; i < m.tiles.length; ++i)
                     $root.greyvarproto.Tile.encode(m.tiles[i], w.uint32(18).fork()).ldelim();
             }
+            if (m.rowCount != null && Object.hasOwnProperty.call(m, "rowCount"))
+                w.uint32(24).uint32(m.rowCount);
+            if (m.colCount != null && Object.hasOwnProperty.call(m, "colCount"))
+                w.uint32(32).uint32(m.colCount);
             return w;
         };
 
@@ -2365,6 +2388,12 @@ export const greyvarproto = $root.greyvarproto = (() => {
                     if (!(m.tiles && m.tiles.length))
                         m.tiles = [];
                     m.tiles.push($root.greyvarproto.Tile.decode(r, r.uint32()));
+                    break;
+                case 3:
+                    m.rowCount = r.uint32();
+                    break;
+                case 4:
+                    m.colCount = r.uint32();
                     break;
                 default:
                     r.skipType(t & 7);
@@ -2398,6 +2427,14 @@ export const greyvarproto = $root.greyvarproto = (() => {
                     }
                 }
             }
+            if (m.rowCount != null && m.hasOwnProperty("rowCount")) {
+                if (!$util.isInteger(m.rowCount))
+                    return "rowCount: integer expected";
+            }
+            if (m.colCount != null && m.hasOwnProperty("colCount")) {
+                if (!$util.isInteger(m.colCount))
+                    return "colCount: integer expected";
+            }
             return null;
         };
 
@@ -2418,6 +2455,12 @@ export const greyvarproto = $root.greyvarproto = (() => {
                     m.tiles[i] = $root.greyvarproto.Tile.fromObject(d.tiles[i]);
                 }
             }
+            if (d.rowCount != null) {
+                m.rowCount = d.rowCount >>> 0;
+            }
+            if (d.colCount != null) {
+                m.colCount = d.colCount >>> 0;
+            }
             return m;
         };
 
@@ -2430,6 +2473,8 @@ export const greyvarproto = $root.greyvarproto = (() => {
             }
             if (o.defaults) {
                 d.title = "";
+                d.rowCount = 0;
+                d.colCount = 0;
             }
             if (m.title != null && m.hasOwnProperty("title")) {
                 d.title = m.title;
@@ -2439,6 +2484,12 @@ export const greyvarproto = $root.greyvarproto = (() => {
                 for (var j = 0; j < m.tiles.length; ++j) {
                     d.tiles[j] = $root.greyvarproto.Tile.toObject(m.tiles[j], o);
                 }
+            }
+            if (m.rowCount != null && m.hasOwnProperty("rowCount")) {
+                d.rowCount = m.rowCount;
+            }
+            if (m.colCount != null && m.hasOwnProperty("colCount")) {
+                d.colCount = m.colCount;
             }
             return d;
         };

@@ -44,14 +44,16 @@ export default class ServerConnection {
       }
 
       if (receivedMessage.grid != null) {
-        //this.onMessageGrid(receivedMessage.grid)
-        const newGrid = new Grid()
+        const newGrid = new Grid(
+          receivedMessage.grid.rowCount,
+          receivedMessage.grid.colCount
+        )
 
         for (const netTile of receivedMessage.grid.tiles) {
           const tile = new Tile()
           tile.fromNet(netTile)
 
-          newGrid.set(tile.col, tile.row, tile)
+          newGrid.set(tile.row, tile.col, tile)
         }
       
         window.gameState.onNewGrid(newGrid)
