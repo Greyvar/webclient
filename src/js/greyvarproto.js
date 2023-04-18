@@ -413,17 +413,16 @@ export const greyvarproto = $root.greyvarproto = (() => {
     greyvarproto.ServerUpdate = (function() {
 
         function ServerUpdate(p) {
-            this.playerFrames = [];
             this.entityPositions = [];
             this.entitySpawns = [];
             this.entityDefinitions = [];
+            this.entityStateChanges = [];
             if (p)
                 for (var ks = Object.keys(p), i = 0; i < ks.length; ++i)
                     if (p[ks[i]] != null)
                         this[ks[i]] = p[ks[i]];
         }
 
-        ServerUpdate.prototype.playerFrames = $util.emptyArray;
         ServerUpdate.prototype.entityPositions = $util.emptyArray;
         ServerUpdate.prototype.entitySpawns = $util.emptyArray;
         ServerUpdate.prototype.playerJoined = null;
@@ -431,6 +430,7 @@ export const greyvarproto = $root.greyvarproto = (() => {
         ServerUpdate.prototype.grid = null;
         ServerUpdate.prototype.connectionResponse = null;
         ServerUpdate.prototype.entityDefinitions = $util.emptyArray;
+        ServerUpdate.prototype.entityStateChanges = $util.emptyArray;
 
         ServerUpdate.create = function create(properties) {
             return new ServerUpdate(properties);
@@ -439,10 +439,6 @@ export const greyvarproto = $root.greyvarproto = (() => {
         ServerUpdate.encode = function encode(m, w) {
             if (!w)
                 w = $Writer.create();
-            if (m.playerFrames != null && m.playerFrames.length) {
-                for (var i = 0; i < m.playerFrames.length; ++i)
-                    $root.greyvarproto.PlayerFrame.encode(m.playerFrames[i], w.uint32(10).fork()).ldelim();
-            }
             if (m.entityPositions != null && m.entityPositions.length) {
                 for (var i = 0; i < m.entityPositions.length; ++i)
                     $root.greyvarproto.EntityPosition.encode(m.entityPositions[i], w.uint32(18).fork()).ldelim();
@@ -463,6 +459,10 @@ export const greyvarproto = $root.greyvarproto = (() => {
                 for (var i = 0; i < m.entityDefinitions.length; ++i)
                     $root.greyvarproto.EntityDefinition.encode(m.entityDefinitions[i], w.uint32(66).fork()).ldelim();
             }
+            if (m.entityStateChanges != null && m.entityStateChanges.length) {
+                for (var i = 0; i < m.entityStateChanges.length; ++i)
+                    $root.greyvarproto.EntityStateChange.encode(m.entityStateChanges[i], w.uint32(74).fork()).ldelim();
+            }
             return w;
         };
 
@@ -477,11 +477,6 @@ export const greyvarproto = $root.greyvarproto = (() => {
             while (r.pos < c) {
                 var t = r.uint32();
                 switch (t >>> 3) {
-                case 1:
-                    if (!(m.playerFrames && m.playerFrames.length))
-                        m.playerFrames = [];
-                    m.playerFrames.push($root.greyvarproto.PlayerFrame.decode(r, r.uint32()));
-                    break;
                 case 2:
                     if (!(m.entityPositions && m.entityPositions.length))
                         m.entityPositions = [];
@@ -509,6 +504,11 @@ export const greyvarproto = $root.greyvarproto = (() => {
                         m.entityDefinitions = [];
                     m.entityDefinitions.push($root.greyvarproto.EntityDefinition.decode(r, r.uint32()));
                     break;
+                case 9:
+                    if (!(m.entityStateChanges && m.entityStateChanges.length))
+                        m.entityStateChanges = [];
+                    m.entityStateChanges.push($root.greyvarproto.EntityStateChange.decode(r, r.uint32()));
+                    break;
                 default:
                     r.skipType(t & 7);
                     break;
@@ -526,17 +526,6 @@ export const greyvarproto = $root.greyvarproto = (() => {
         ServerUpdate.verify = function verify(m) {
             if (typeof m !== "object" || m === null)
                 return "object expected";
-            if (m.playerFrames != null && m.hasOwnProperty("playerFrames")) {
-                if (!Array.isArray(m.playerFrames))
-                    return "playerFrames: array expected";
-                for (var i = 0; i < m.playerFrames.length; ++i) {
-                    {
-                        var e = $root.greyvarproto.PlayerFrame.verify(m.playerFrames[i]);
-                        if (e)
-                            return "playerFrames." + e;
-                    }
-                }
-            }
             if (m.entityPositions != null && m.hasOwnProperty("entityPositions")) {
                 if (!Array.isArray(m.entityPositions))
                     return "entityPositions: array expected";
@@ -598,6 +587,17 @@ export const greyvarproto = $root.greyvarproto = (() => {
                     }
                 }
             }
+            if (m.entityStateChanges != null && m.hasOwnProperty("entityStateChanges")) {
+                if (!Array.isArray(m.entityStateChanges))
+                    return "entityStateChanges: array expected";
+                for (var i = 0; i < m.entityStateChanges.length; ++i) {
+                    {
+                        var e = $root.greyvarproto.EntityStateChange.verify(m.entityStateChanges[i]);
+                        if (e)
+                            return "entityStateChanges." + e;
+                    }
+                }
+            }
             return null;
         };
 
@@ -605,16 +605,6 @@ export const greyvarproto = $root.greyvarproto = (() => {
             if (d instanceof $root.greyvarproto.ServerUpdate)
                 return d;
             var m = new $root.greyvarproto.ServerUpdate();
-            if (d.playerFrames) {
-                if (!Array.isArray(d.playerFrames))
-                    throw TypeError(".greyvarproto.ServerUpdate.playerFrames: array expected");
-                m.playerFrames = [];
-                for (var i = 0; i < d.playerFrames.length; ++i) {
-                    if (typeof d.playerFrames[i] !== "object")
-                        throw TypeError(".greyvarproto.ServerUpdate.playerFrames: object expected");
-                    m.playerFrames[i] = $root.greyvarproto.PlayerFrame.fromObject(d.playerFrames[i]);
-                }
-            }
             if (d.entityPositions) {
                 if (!Array.isArray(d.entityPositions))
                     throw TypeError(".greyvarproto.ServerUpdate.entityPositions: array expected");
@@ -665,6 +655,16 @@ export const greyvarproto = $root.greyvarproto = (() => {
                     m.entityDefinitions[i] = $root.greyvarproto.EntityDefinition.fromObject(d.entityDefinitions[i]);
                 }
             }
+            if (d.entityStateChanges) {
+                if (!Array.isArray(d.entityStateChanges))
+                    throw TypeError(".greyvarproto.ServerUpdate.entityStateChanges: array expected");
+                m.entityStateChanges = [];
+                for (var i = 0; i < d.entityStateChanges.length; ++i) {
+                    if (typeof d.entityStateChanges[i] !== "object")
+                        throw TypeError(".greyvarproto.ServerUpdate.entityStateChanges: object expected");
+                    m.entityStateChanges[i] = $root.greyvarproto.EntityStateChange.fromObject(d.entityStateChanges[i]);
+                }
+            }
             return m;
         };
 
@@ -673,22 +673,16 @@ export const greyvarproto = $root.greyvarproto = (() => {
                 o = {};
             var d = {};
             if (o.arrays || o.defaults) {
-                d.playerFrames = [];
                 d.entityPositions = [];
                 d.entitySpawns = [];
                 d.entityDefinitions = [];
+                d.entityStateChanges = [];
             }
             if (o.defaults) {
                 d.playerJoined = null;
                 d.singleTileChange = null;
                 d.grid = null;
                 d.connectionResponse = null;
-            }
-            if (m.playerFrames && m.playerFrames.length) {
-                d.playerFrames = [];
-                for (var j = 0; j < m.playerFrames.length; ++j) {
-                    d.playerFrames[j] = $root.greyvarproto.PlayerFrame.toObject(m.playerFrames[j], o);
-                }
             }
             if (m.entityPositions && m.entityPositions.length) {
                 d.entityPositions = [];
@@ -720,6 +714,12 @@ export const greyvarproto = $root.greyvarproto = (() => {
                     d.entityDefinitions[j] = $root.greyvarproto.EntityDefinition.toObject(m.entityDefinitions[j], o);
                 }
             }
+            if (m.entityStateChanges && m.entityStateChanges.length) {
+                d.entityStateChanges = [];
+                for (var j = 0; j < m.entityStateChanges.length; ++j) {
+                    d.entityStateChanges[j] = $root.greyvarproto.EntityStateChange.toObject(m.entityStateChanges[j], o);
+                }
+            }
             return d;
         };
 
@@ -728,244 +728,6 @@ export const greyvarproto = $root.greyvarproto = (() => {
         };
 
         return ServerUpdate;
-    })();
-
-    greyvarproto.PlayerFrame = (function() {
-
-        function PlayerFrame(p) {
-            if (p)
-                for (var ks = Object.keys(p), i = 0; i < ks.length; ++i)
-                    if (p[ks[i]] != null)
-                        this[ks[i]] = p[ks[i]];
-        }
-
-        PlayerFrame.prototype.playerId = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
-        PlayerFrame.prototype.moveResponse = null;
-        PlayerFrame.prototype.playerQuit = null;
-        PlayerFrame.prototype.playerYou = null;
-
-        PlayerFrame.create = function create(properties) {
-            return new PlayerFrame(properties);
-        };
-
-        PlayerFrame.encode = function encode(m, w) {
-            if (!w)
-                w = $Writer.create();
-            if (m.playerId != null && Object.hasOwnProperty.call(m, "playerId"))
-                w.uint32(8).int64(m.playerId);
-            if (m.moveResponse != null && Object.hasOwnProperty.call(m, "moveResponse"))
-                $root.greyvarproto.MoveResponse.encode(m.moveResponse, w.uint32(18).fork()).ldelim();
-            if (m.playerQuit != null && Object.hasOwnProperty.call(m, "playerQuit"))
-                $root.greyvarproto.PlayerQuit.encode(m.playerQuit, w.uint32(26).fork()).ldelim();
-            if (m.playerYou != null && Object.hasOwnProperty.call(m, "playerYou"))
-                $root.greyvarproto.PlayerYou.encode(m.playerYou, w.uint32(34).fork()).ldelim();
-            return w;
-        };
-
-        PlayerFrame.encodeDelimited = function encodeDelimited(message, writer) {
-            return this.encode(message, writer).ldelim();
-        };
-
-        PlayerFrame.decode = function decode(r, l) {
-            if (!(r instanceof $Reader))
-                r = $Reader.create(r);
-            var c = l === undefined ? r.len : r.pos + l, m = new $root.greyvarproto.PlayerFrame();
-            while (r.pos < c) {
-                var t = r.uint32();
-                switch (t >>> 3) {
-                case 1:
-                    m.playerId = r.int64();
-                    break;
-                case 2:
-                    m.moveResponse = $root.greyvarproto.MoveResponse.decode(r, r.uint32());
-                    break;
-                case 3:
-                    m.playerQuit = $root.greyvarproto.PlayerQuit.decode(r, r.uint32());
-                    break;
-                case 4:
-                    m.playerYou = $root.greyvarproto.PlayerYou.decode(r, r.uint32());
-                    break;
-                default:
-                    r.skipType(t & 7);
-                    break;
-                }
-            }
-            return m;
-        };
-
-        PlayerFrame.decodeDelimited = function decodeDelimited(reader) {
-            if (!(reader instanceof $Reader))
-                reader = new $Reader(reader);
-            return this.decode(reader, reader.uint32());
-        };
-
-        PlayerFrame.verify = function verify(m) {
-            if (typeof m !== "object" || m === null)
-                return "object expected";
-            if (m.playerId != null && m.hasOwnProperty("playerId")) {
-                if (!$util.isInteger(m.playerId) && !(m.playerId && $util.isInteger(m.playerId.low) && $util.isInteger(m.playerId.high)))
-                    return "playerId: integer|Long expected";
-            }
-            if (m.moveResponse != null && m.hasOwnProperty("moveResponse")) {
-                {
-                    var e = $root.greyvarproto.MoveResponse.verify(m.moveResponse);
-                    if (e)
-                        return "moveResponse." + e;
-                }
-            }
-            if (m.playerQuit != null && m.hasOwnProperty("playerQuit")) {
-                {
-                    var e = $root.greyvarproto.PlayerQuit.verify(m.playerQuit);
-                    if (e)
-                        return "playerQuit." + e;
-                }
-            }
-            if (m.playerYou != null && m.hasOwnProperty("playerYou")) {
-                {
-                    var e = $root.greyvarproto.PlayerYou.verify(m.playerYou);
-                    if (e)
-                        return "playerYou." + e;
-                }
-            }
-            return null;
-        };
-
-        PlayerFrame.fromObject = function fromObject(d) {
-            if (d instanceof $root.greyvarproto.PlayerFrame)
-                return d;
-            var m = new $root.greyvarproto.PlayerFrame();
-            if (d.playerId != null) {
-                if ($util.Long)
-                    (m.playerId = $util.Long.fromValue(d.playerId)).unsigned = false;
-                else if (typeof d.playerId === "string")
-                    m.playerId = parseInt(d.playerId, 10);
-                else if (typeof d.playerId === "number")
-                    m.playerId = d.playerId;
-                else if (typeof d.playerId === "object")
-                    m.playerId = new $util.LongBits(d.playerId.low >>> 0, d.playerId.high >>> 0).toNumber();
-            }
-            if (d.moveResponse != null) {
-                if (typeof d.moveResponse !== "object")
-                    throw TypeError(".greyvarproto.PlayerFrame.moveResponse: object expected");
-                m.moveResponse = $root.greyvarproto.MoveResponse.fromObject(d.moveResponse);
-            }
-            if (d.playerQuit != null) {
-                if (typeof d.playerQuit !== "object")
-                    throw TypeError(".greyvarproto.PlayerFrame.playerQuit: object expected");
-                m.playerQuit = $root.greyvarproto.PlayerQuit.fromObject(d.playerQuit);
-            }
-            if (d.playerYou != null) {
-                if (typeof d.playerYou !== "object")
-                    throw TypeError(".greyvarproto.PlayerFrame.playerYou: object expected");
-                m.playerYou = $root.greyvarproto.PlayerYou.fromObject(d.playerYou);
-            }
-            return m;
-        };
-
-        PlayerFrame.toObject = function toObject(m, o) {
-            if (!o)
-                o = {};
-            var d = {};
-            if (o.defaults) {
-                if ($util.Long) {
-                    var n = new $util.Long(0, 0, false);
-                    d.playerId = o.longs === String ? n.toString() : o.longs === Number ? n.toNumber() : n;
-                } else
-                    d.playerId = o.longs === String ? "0" : 0;
-                d.moveResponse = null;
-                d.playerQuit = null;
-                d.playerYou = null;
-            }
-            if (m.playerId != null && m.hasOwnProperty("playerId")) {
-                if (typeof m.playerId === "number")
-                    d.playerId = o.longs === String ? String(m.playerId) : m.playerId;
-                else
-                    d.playerId = o.longs === String ? $util.Long.prototype.toString.call(m.playerId) : o.longs === Number ? new $util.LongBits(m.playerId.low >>> 0, m.playerId.high >>> 0).toNumber() : m.playerId;
-            }
-            if (m.moveResponse != null && m.hasOwnProperty("moveResponse")) {
-                d.moveResponse = $root.greyvarproto.MoveResponse.toObject(m.moveResponse, o);
-            }
-            if (m.playerQuit != null && m.hasOwnProperty("playerQuit")) {
-                d.playerQuit = $root.greyvarproto.PlayerQuit.toObject(m.playerQuit, o);
-            }
-            if (m.playerYou != null && m.hasOwnProperty("playerYou")) {
-                d.playerYou = $root.greyvarproto.PlayerYou.toObject(m.playerYou, o);
-            }
-            return d;
-        };
-
-        PlayerFrame.prototype.toJSON = function toJSON() {
-            return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
-        };
-
-        return PlayerFrame;
-    })();
-
-    greyvarproto.MoveResponse = (function() {
-
-        function MoveResponse(p) {
-            if (p)
-                for (var ks = Object.keys(p), i = 0; i < ks.length; ++i)
-                    if (p[ks[i]] != null)
-                        this[ks[i]] = p[ks[i]];
-        }
-
-        MoveResponse.create = function create(properties) {
-            return new MoveResponse(properties);
-        };
-
-        MoveResponse.encode = function encode(m, w) {
-            if (!w)
-                w = $Writer.create();
-            return w;
-        };
-
-        MoveResponse.encodeDelimited = function encodeDelimited(message, writer) {
-            return this.encode(message, writer).ldelim();
-        };
-
-        MoveResponse.decode = function decode(r, l) {
-            if (!(r instanceof $Reader))
-                r = $Reader.create(r);
-            var c = l === undefined ? r.len : r.pos + l, m = new $root.greyvarproto.MoveResponse();
-            while (r.pos < c) {
-                var t = r.uint32();
-                switch (t >>> 3) {
-                default:
-                    r.skipType(t & 7);
-                    break;
-                }
-            }
-            return m;
-        };
-
-        MoveResponse.decodeDelimited = function decodeDelimited(reader) {
-            if (!(reader instanceof $Reader))
-                reader = new $Reader(reader);
-            return this.decode(reader, reader.uint32());
-        };
-
-        MoveResponse.verify = function verify(m) {
-            if (typeof m !== "object" || m === null)
-                return "object expected";
-            return null;
-        };
-
-        MoveResponse.fromObject = function fromObject(d) {
-            if (d instanceof $root.greyvarproto.MoveResponse)
-                return d;
-            return new $root.greyvarproto.MoveResponse();
-        };
-
-        MoveResponse.toObject = function toObject() {
-            return {};
-        };
-
-        MoveResponse.prototype.toJSON = function toJSON() {
-            return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
-        };
-
-        return MoveResponse;
     })();
 
     greyvarproto.EntityPosition = (function() {
@@ -1243,9 +1005,9 @@ export const greyvarproto = $root.greyvarproto = (() => {
         EntitySpawn.prototype.y = 0;
         EntitySpawn.prototype.w = 0;
         EntitySpawn.prototype.h = 0;
-        EntitySpawn.prototype.texture = "";
         EntitySpawn.prototype.primaryColor = 0;
         EntitySpawn.prototype.definition = "";
+        EntitySpawn.prototype.initialState = "";
 
         EntitySpawn.create = function create(properties) {
             return new EntitySpawn(properties);
@@ -1264,12 +1026,12 @@ export const greyvarproto = $root.greyvarproto = (() => {
                 w.uint32(32).int32(m.w);
             if (m.h != null && Object.hasOwnProperty.call(m, "h"))
                 w.uint32(40).int32(m.h);
-            if (m.texture != null && Object.hasOwnProperty.call(m, "texture"))
-                w.uint32(50).string(m.texture);
             if (m.primaryColor != null && Object.hasOwnProperty.call(m, "primaryColor"))
                 w.uint32(56).uint32(m.primaryColor);
             if (m.definition != null && Object.hasOwnProperty.call(m, "definition"))
                 w.uint32(74).string(m.definition);
+            if (m.initialState != null && Object.hasOwnProperty.call(m, "initialState"))
+                w.uint32(82).string(m.initialState);
             return w;
         };
 
@@ -1299,14 +1061,14 @@ export const greyvarproto = $root.greyvarproto = (() => {
                 case 5:
                     m.h = r.int32();
                     break;
-                case 6:
-                    m.texture = r.string();
-                    break;
                 case 7:
                     m.primaryColor = r.uint32();
                     break;
                 case 9:
                     m.definition = r.string();
+                    break;
+                case 10:
+                    m.initialState = r.string();
                     break;
                 default:
                     r.skipType(t & 7);
@@ -1345,10 +1107,6 @@ export const greyvarproto = $root.greyvarproto = (() => {
                 if (!$util.isInteger(m.h))
                     return "h: integer expected";
             }
-            if (m.texture != null && m.hasOwnProperty("texture")) {
-                if (!$util.isString(m.texture))
-                    return "texture: string expected";
-            }
             if (m.primaryColor != null && m.hasOwnProperty("primaryColor")) {
                 if (!$util.isInteger(m.primaryColor))
                     return "primaryColor: integer expected";
@@ -1356,6 +1114,10 @@ export const greyvarproto = $root.greyvarproto = (() => {
             if (m.definition != null && m.hasOwnProperty("definition")) {
                 if (!$util.isString(m.definition))
                     return "definition: string expected";
+            }
+            if (m.initialState != null && m.hasOwnProperty("initialState")) {
+                if (!$util.isString(m.initialState))
+                    return "initialState: string expected";
             }
             return null;
         };
@@ -1386,14 +1148,14 @@ export const greyvarproto = $root.greyvarproto = (() => {
             if (d.h != null) {
                 m.h = d.h | 0;
             }
-            if (d.texture != null) {
-                m.texture = String(d.texture);
-            }
             if (d.primaryColor != null) {
                 m.primaryColor = d.primaryColor >>> 0;
             }
             if (d.definition != null) {
                 m.definition = String(d.definition);
+            }
+            if (d.initialState != null) {
+                m.initialState = String(d.initialState);
             }
             return m;
         };
@@ -1412,9 +1174,9 @@ export const greyvarproto = $root.greyvarproto = (() => {
                 d.y = 0;
                 d.w = 0;
                 d.h = 0;
-                d.texture = "";
                 d.primaryColor = 0;
                 d.definition = "";
+                d.initialState = "";
             }
             if (m.entityId != null && m.hasOwnProperty("entityId")) {
                 if (typeof m.entityId === "number")
@@ -1434,14 +1196,14 @@ export const greyvarproto = $root.greyvarproto = (() => {
             if (m.h != null && m.hasOwnProperty("h")) {
                 d.h = m.h;
             }
-            if (m.texture != null && m.hasOwnProperty("texture")) {
-                d.texture = m.texture;
-            }
             if (m.primaryColor != null && m.hasOwnProperty("primaryColor")) {
                 d.primaryColor = m.primaryColor;
             }
             if (m.definition != null && m.hasOwnProperty("definition")) {
                 d.definition = m.definition;
+            }
+            if (m.initialState != null && m.hasOwnProperty("initialState")) {
+                d.initialState = m.initialState;
             }
             return d;
         };
@@ -1464,7 +1226,6 @@ export const greyvarproto = $root.greyvarproto = (() => {
         }
 
         EntityDefinition.prototype.name = "";
-        EntityDefinition.prototype.initialState = "";
         EntityDefinition.prototype.states = $util.emptyArray;
         EntityDefinition.prototype.texture = "";
 
@@ -1477,8 +1238,6 @@ export const greyvarproto = $root.greyvarproto = (() => {
                 w = $Writer.create();
             if (m.name != null && Object.hasOwnProperty.call(m, "name"))
                 w.uint32(10).string(m.name);
-            if (m.initialState != null && Object.hasOwnProperty.call(m, "initialState"))
-                w.uint32(18).string(m.initialState);
             if (m.states != null && m.states.length) {
                 for (var i = 0; i < m.states.length; ++i)
                     $root.greyvarproto.EntityState.encode(m.states[i], w.uint32(26).fork()).ldelim();
@@ -1501,9 +1260,6 @@ export const greyvarproto = $root.greyvarproto = (() => {
                 switch (t >>> 3) {
                 case 1:
                     m.name = r.string();
-                    break;
-                case 2:
-                    m.initialState = r.string();
                     break;
                 case 3:
                     if (!(m.states && m.states.length))
@@ -1534,10 +1290,6 @@ export const greyvarproto = $root.greyvarproto = (() => {
                 if (!$util.isString(m.name))
                     return "name: string expected";
             }
-            if (m.initialState != null && m.hasOwnProperty("initialState")) {
-                if (!$util.isString(m.initialState))
-                    return "initialState: string expected";
-            }
             if (m.states != null && m.hasOwnProperty("states")) {
                 if (!Array.isArray(m.states))
                     return "states: array expected";
@@ -1562,9 +1314,6 @@ export const greyvarproto = $root.greyvarproto = (() => {
             var m = new $root.greyvarproto.EntityDefinition();
             if (d.name != null) {
                 m.name = String(d.name);
-            }
-            if (d.initialState != null) {
-                m.initialState = String(d.initialState);
             }
             if (d.states) {
                 if (!Array.isArray(d.states))
@@ -1591,14 +1340,10 @@ export const greyvarproto = $root.greyvarproto = (() => {
             }
             if (o.defaults) {
                 d.name = "";
-                d.initialState = "";
                 d.texture = "";
             }
             if (m.name != null && m.hasOwnProperty("name")) {
                 d.name = m.name;
-            }
-            if (m.initialState != null && m.hasOwnProperty("initialState")) {
-                d.initialState = m.initialState;
             }
             if (m.states && m.states.length) {
                 d.states = [];

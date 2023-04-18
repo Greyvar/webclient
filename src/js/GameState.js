@@ -1,24 +1,22 @@
-import Grid from './Grid.js'
 import GridScene from './scenes/GridScene.js'
 import SplashScene from './scenes/SplashScene.js'
 
 export default class GameState {
-  entdefs = {}
-  hackHasLoadedInitialGrid = false;
+  entdefs = new Map()
+  hackHasLoadedInitialGrid = false
   gridScene = null
   grid = null
 
-  constructor() {
-  }
+  constructor() {}
 
-  addMessage(m) {
-  }
+  addMessage(m) {}
 
   onNewGrid(g) {
     let gs = new GridScene(g)
 
     let k = new Date().toString()
     window.phaser.scene.add(k, gs, true)
+    window.phaser.scene.bringToTop('hud')
 
     this.grid = g
     this.gridScene = gs
@@ -27,7 +25,7 @@ export default class GameState {
   }
 
   onPlayerJoined(plj) {
-    console.log("player joined:", plj.username)
+    console.log('player joined:', plj.username)
   }
 
   onEntitySpawn(ent) {
@@ -40,6 +38,6 @@ export default class GameState {
   }
 
   onEntdef(entdef) {
-    this.entdefs[entdef.name] = entdef
+    this.entdefs.set(entdef.name, entdef)
   }
 }

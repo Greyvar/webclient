@@ -9,7 +9,9 @@ export default class ServerConnection {
 
   connect() {
     try {
-      const address = "ws://" + window.location.hostname + ":8080/"
+      const address = "wss://" + window.location.hostname + ":8443/"
+
+      console.log("address", address)
 
       this.sock = new WebSocket(address)
       this.sock.onerror = this.onError
@@ -43,6 +45,10 @@ export default class ServerConnection {
         window.gameState.addMessage(receivedMessage.connectionResponse)
       }
 
+      for (const entdef of receivedMessage.entityDefinitions) {
+        window.gameState.onEntdef(entdef)
+      }
+
       if (receivedMessage.grid != null) {
         const newGrid = new Grid(
           receivedMessage.grid.rowCount,
@@ -62,17 +68,17 @@ export default class ServerConnection {
       if (receivedMessage.playerJoined != null) {
         window.gameState.onPlayerJoined(receivedMessage.playerJoined)
       }
-
-      for (const entdef of receivedMessage.entityDefinitions) {
-        window.gameState.onEntdef(entdef)
-      }
-
+ 
       for (const ent of receivedMessage.entitySpawns) {
         window.gameState.onEntitySpawn(ent)
       }
 
       for (const entpos of receivedMessage.entityPositions) {
         window.gameState.onEntityPosition(entpos)
+      }
+
+      for (const entchange of receivedMessage.entityStateChanges) {
+        window.gameState.gridScene.onEntityChange(entchange)
       }
     })
   }
@@ -81,6 +87,8 @@ export default class ServerConnection {
     let msg = greyvarproto.ClientRequests.create({
         moveRequest: greyvarproto.MoveRequest.create(vec)
       })
+
+    console.log(msg)
 
     this.sock.send(greyvarproto.ClientRequests.encode(msg).finish());
 
