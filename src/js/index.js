@@ -1,6 +1,7 @@
 import GameState from './GameState.js'
 import ServerConnection from './ServerConnection.js'
 import { GridScene } from './scenes/GridScene.js'
+import SplashScene from './scenes/SplashScene.js'
 import HudScene from './scenes/HudScene.js'
 import MenuScene from './scenes/MenuScene.js'
 import Phaser from './phaser.min.js'
@@ -34,8 +35,9 @@ function init() {
     }
   })
 
-  window.phaser.scene.add('hud', HudScene, true)
+  window.phaser.scene.add('hud', HudScene, false)
   window.phaser.scene.add('menu', MenuScene, false)
+  window.phaser.scene.add('splash', SplashScene, true)
 
   window.serverConnection = new ServerConnection()
 }

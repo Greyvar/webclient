@@ -6,7 +6,7 @@ export default class HudScene extends Phaser.Scene {
   }
 
   preload() {
-    this.load.setBaseURL('https://mindstorm/greyvar-webclient/res/')
+    this.load.setBaseURL('https://' + window.location.host + '/res/')
     this.load.image('menu', 'img/textures/hud/menu.png')
     this.load.image('fullscreen', 'img/textures/hud/fullscreenToggle.png')
   }

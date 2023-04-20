@@ -7,6 +7,8 @@ export default class GameState {
   gridScene = null
   grid = null
 
+  hackHasLoadedLogo = false
+
   constructor() {}
 
   addMessage(m) {}

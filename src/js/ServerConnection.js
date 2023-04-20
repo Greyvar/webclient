@@ -3,13 +3,15 @@ import Grid from './Grid.js'
 import Tile from './Tile.js'
 
 export default class ServerConnection {
+  isOk = false;
+  
   constructor() {
     this.connect()
   }
 
   connect() {
     try {
-      const address = "wss://" + window.location.hostname + ":8443/"
+      const address = "wss://" + window.location.hostname + ":8443/api/"
 
       console.log("address", address)
 
@@ -21,6 +23,8 @@ export default class ServerConnection {
     }
 
     this.sock.onopen = (evt) => {
+      isOk = true
+
       let msg = greyvarproto.ClientRequests.create({
         registrationRequest: greyvarproto.RegistrationRequest.create({
           username: 'james'

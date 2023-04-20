@@ -13,7 +13,7 @@ export default class GridScene extends Phaser.Scene {
 
 
   preload() {
-    this.load.setBaseURL('https://mindstorm/greyvar-webclient/res/')
+    this.load.setBaseURL('https://' + window.location.host + '/res/')
     this.load.image('construct.png', 'img/textures/tiles/construct.png')
 
     for (const entdef of window.gameState.entdefs.entries()) {

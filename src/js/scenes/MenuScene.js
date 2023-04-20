@@ -6,7 +6,7 @@ export default class MenuScene extends Phaser.Scene {
   }
 
   preload() {
-    this.load.setBaseURL('https://mindstorm/greyvar-webclient/res/')
+    this.load.setBaseURL('https://' + window.location.host + '/res/')
     this.load.image('close', 'img/textures/hud/close.png')
     this.load.image('reload', 'img/textures/hud/reload.png')
   }
