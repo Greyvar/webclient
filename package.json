@@ -6,7 +6,7 @@
   "dependencies": {
     "parcel": "2.10.3",
     "phaser": "^3.55.2",
-    "protobufjs": "^7.2.4"
+    "protobufjs": "^7.2.5"
   },
   "devDependencies": {
     "@parcel/transformer-pug": "^2.10.3",
