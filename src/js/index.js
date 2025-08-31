@@ -13,6 +13,9 @@ function init() {
     type: Phaser.WEBGL,
     width: 320,
     height: 256,
+    audio: {
+      disableWebAudio: true,
+    },
     input: {
       gamepad: true,
     },

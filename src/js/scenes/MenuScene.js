@@ -1,19 +1,19 @@
 import Phaser from '../phaser.min.js'
 
 export default class MenuScene extends Phaser.Scene {
-  constructor() {
+  constructor () {
     super({ key: 'menu', active: true})
   }
 
-  preload() {
+  preload () {
     this.load.setBaseURL('https://' + window.location.host + '/res/')
     this.load.image('close', 'img/textures/hud/close.png')
     this.load.image('reload', 'img/textures/hud/reload.png')
   }
 
-  create() {
+  create () {
     console.log("creating menu")
-    let g = this.add.graphics()
+    const g = this.add.graphics()
 
     g.fillStyle(0x524e4b)
     g.fillRect(0, 0, 2000, 900)
