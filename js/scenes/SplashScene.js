@@ -1,5 +1,3 @@
-import Phaser from '../phaser.min.js'
-
 export default class SplashScene extends Phaser.Scene {
   create () {
     const g = this.add.graphics()
