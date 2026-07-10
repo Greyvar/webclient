@@ -1,5 +1,3 @@
-import Phaser from '../phaser.min.js'
-
 export default class HudScene extends Phaser.Scene {
   constructor() {
     super({ key: "hud", active: true})

@@ -1,4 +1,4 @@
-import Phaser from '../phaser.min.js'
+import Phaser from 'phaser'
 
 export default class GridScene extends Phaser.Scene {
   grid = null

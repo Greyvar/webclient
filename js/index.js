@@ -1,12 +1,12 @@
 import GameState from './GameState.js'
 import ServerConnection from './ServerConnection.js'
-import { GridScene } from './scenes/GridScene.js'
+import GridScene from './scenes/GridScene.js'
 import SplashScene from './scenes/SplashScene.js'
 import HudScene from './scenes/HudScene.js'
 import MenuScene from './scenes/MenuScene.js'
-import Phaser from './phaser.min.js'
+import Phaser from 'phaser'
 
-function init() {
+export function init() {
   window.gameState = new GameState()
 
   window.phaser = new Phaser.Game({

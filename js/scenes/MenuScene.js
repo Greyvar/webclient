@@ -1,5 +1,3 @@
-import Phaser from '../phaser.min.js'
-
 export default class MenuScene extends Phaser.Scene {
   constructor () {
     super({ key: 'menu', active: true})
