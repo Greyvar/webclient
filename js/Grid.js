@@ -5,6 +5,10 @@ export default class Grid {
     this.tileMap = []
     this.rowCount = rowCount
     this.colCount = colCount
+    this.gridId = null
+    this.worldId = null
+    this.tilesets = []
+    this.transition = null
 
     for (let row = 0; row < rowCount; row++) {
       this.tileMap[row] = []
@@ -23,17 +27,15 @@ export default class Grid {
         this.tileMap[row][col] = t
       }
     }
-
-    console.log(this.tileMap)
   }
 
   allTiles() {
     return this.tileMap.flat()
   }
 
-  set(row, col, tile) {
+  set (row, col, tile) {
     if (this.tileMap[row] == undefined) {
-      console.error(col, row)
+      console.error('grid set out of bounds', { row, col, rowCount: this.rowCount, colCount: this.colCount })
       return
     }
 

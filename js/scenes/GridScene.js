@@ -1,4 +1,9 @@
 import Phaser from 'phaser'
+import { initMovementInput, pollMovementInput, isMovementKeyDown } from '../MovementInput.js'
+import { TILE_SIZE, isCollisionDebugEnabled, refreshCollisionDebugOverlay } from '../collisionDebug.js'
+
+const MOVE_DURATION_MS = 100
+const SCROLL_TRANSITION_MS = 380
 
 export default class GridScene extends Phaser.Scene {
   grid = null
@@ -6,14 +11,17 @@ export default class GridScene extends Phaser.Scene {
 
   entities = {}
 
-  constructor(grid) {
-    super(new Date().toString())
+  isScrollTransitioning = false
+  pendingTransitionSpawns = []
+
+  constructor (grid) {
+    super({ key: 'grid' })
     this.grid = grid
   }
 
 
   preload() {
-    this.load.setBaseURL('https://' + window.location.host + '/res/')
+    this.load.setBaseURL('/res/')
     this.load.image('construct.png', 'img/textures/tiles/construct.png')
 
     for (const entdef of window.gameState.entdefs.entries()) {
@@ -25,6 +33,7 @@ export default class GridScene extends Phaser.Scene {
     this.layerGrid = this.add.layer()
     this.layerEntities = this.add.layer()
 
+    this.preloadTilesets()
     this.preloadAllGridTextures()
     this.preloaded = true
   }
@@ -37,6 +46,11 @@ export default class GridScene extends Phaser.Scene {
   }
 
   create() {
+    console.log('[Greyvar] GridScene.create()', {
+      tileCount: this.grid?.allTiles?.()?.length,
+      entdefCount: window.gameState.entdefs.size
+    })
+
     this.anims.create({
       key: 'water',
       frames: this.anims.generateFrameNames('water', { prefix: '', end: 2}),
@@ -44,12 +58,48 @@ export default class GridScene extends Phaser.Scene {
       duration: 1500,
     })
 
-    this.cursors = this.input.keyboard.createCursorKeys()
-    this.pointer = this.input.activePointer;
+    this.pointer = this.input.activePointer
 
     this.renderGrid()
-
     this.renderEntities()
+    this.configureCamera()
+    this.entitiesReady = true
+
+    initMovementInput(this)
+    this.input.keyboard.enabled = true
+
+    if (isCollisionDebugEnabled()) {
+      refreshCollisionDebugOverlay()
+    }
+  }
+
+  canRenderEntity () {
+    return !this.load.isLoading()
+  }
+
+  spriteKeyForEntity (ent) {
+    return ent.definition
+  }
+
+  initialStateForEntity (ent) {
+    if (ent.initialState) {
+      return ent.initialState
+    }
+
+    const entdef = window.gameState.entdefs.get(ent.definition)
+    return entdef?.initialState ?? 'idle'
+  }
+
+  configureCamera () {
+    const tileSize = 16
+    const worldW = this.grid.colCount * tileSize
+    const worldH = this.grid.rowCount * tileSize
+    const cam = this.cameras.main
+
+    cam.setBounds(0, 0, worldW, worldH)
+    cam.setSize(this.scale.width, this.scale.height)
+    cam.setZoom(6)
+    cam.roundPixels = true
   }
 
   mnuClicked() {
@@ -57,12 +107,19 @@ export default class GridScene extends Phaser.Scene {
   }
 
   update() {
-    this.updateCursorKeys()
-    this.updateGamepad()
-//    this.updateInputPointer()
-//    this.renderGrid()
-//    this.renderEntities()
+    if (this.isScrollTransitioning) {
+      return
+    }
 
+    pollMovementInput()
+    this.updateLocalPlayerIdleAnimation()
+    this.updateGamepad()
+
+    for (const id of Object.keys(this.entities)) {
+      if (this.entities[id].img == null) {
+        this.renderEntity(this.entities[id])
+      }
+    }
   }
 
   updateInputPointer(){
@@ -75,13 +132,6 @@ export default class GridScene extends Phaser.Scene {
 
       window.serverConnection.sendMoveRequest({x: 0, y: 1});
     }
-  }
-
-  updateCursorKeys() {
-    if (this.cursors.left.isDown)   window.serverConnection.sendMoveRequest({x: -1, y: 0});
-    if (this.cursors.right.isDown)  window.serverConnection.sendMoveRequest({x: 1, y: 0});
-    if (this.cursors.up.isDown)     window.serverConnection.sendMoveRequest({x: 0, y: -1});
-    if (this.cursors.down.isDown)   window.serverConnection.sendMoveRequest({x: 0, y: 1});
   }
 
   updateGamepad() {
@@ -108,34 +158,61 @@ export default class GridScene extends Phaser.Scene {
   }
 
   renderEntity(ent) {
-    if (ent.img == null) {
-      let img
-
-      if (ent.definition == 'player') {
-        img = this.physics.add.sprite(ent.x, ent.y, ent.texture)
-        img.setCollideWorldBounds(true)
-
-        this.cameras.main.startFollow(img, false, 0.05, 0.05)
-      } else {
-        img = this.add.sprite(ent.x, ent.y, ent.texture)
-      }
-
-      this.createEntityAnimations(img, ent.definition)
-
-      img.setOrigin(0)
-      img.play(ent.initialState)
-
-      ent.img = img
-
-      this.layerEntities.add(ent.img)
+    if (ent.img != null) {
+      return
     }
 
-    //console.log(ent.img)
-    //this.add.image(ent.x, ent.y, ent.texture)
+    if (!this.canRenderEntity()) {
+      return
+    }
+
+    const spriteKey = this.spriteKeyForEntity(ent)
+    if (!spriteKey || !this.textures.exists(spriteKey)) {
+      return
+    }
+
+    const entdef = window.gameState.entdefs.get(ent.definition)
+    if (entdef == null) {
+      return
+    }
+
+    const img = this.add.sprite(ent.x ?? 0, ent.y ?? 0, spriteKey)
+
+    this.createEntityAnimations(img, ent.definition)
+
+    img.setOrigin(0)
+    img.play(this.initialStateForEntity(ent))
+
+    ent.img = img
+
+    this.layerEntities.add(ent.img)
+    this.ensureCameraFollow(ent)
+  }
+
+  ensureCameraFollow (ent) {
+    if (ent.definition !== 'player' || ent.img == null) {
+      return
+    }
+
+    const localId = window.gameState.localPlayerEntityId
+    if (localId == null || ent.entityId !== localId) {
+      return
+    }
+
+    const cam = this.cameras.main
+    if (cam._follow === ent.img) {
+      return
+    }
+
+    cam.startFollow(ent.img, true, 0.15, 0.15)
+    this.playerFollowTarget = ent.img
   }
 
   createEntityAnimations(img, definition) {
     const entdef = window.gameState.entdefs.get(definition)
+    if (entdef == null) {
+      return
+    }
 
     for (const state of entdef.states) {
 //      console.log('creating animation for ', definition, 'state:', state.name, 'with frames:', state.frames)
@@ -180,91 +257,342 @@ export default class GridScene extends Phaser.Scene {
   }
 
   renderGrid() {
-    const tiles = this.grid.allTiles()
+    this.renderGridIntoLayer(this.grid, 0, 0, this.layerGrid)
+  }
 
-    for (const index in tiles) {
-      this.renderTile(tiles[index])
+  renderGridIntoLayer (grid, offsetX, offsetY, layer) {
+    for (const tile of grid.allTiles()) {
+      this.renderTile(tile, { offsetX, offsetY, layer })
     }
   }
 
-  renderTile(tile) {
+  renderTile(tile, opts = {}) {
     const tileSize = 16
+    const offsetX = opts.offsetX ?? 0
+    const offsetY = opts.offsetY ?? 0
+    const layer = opts.layer ?? this.layerGrid
 
-    const posX = (tileSize / 2) + (tile.col * tileSize)
-    const posY = (tileSize / 2) + (tile.row * tileSize)
+    const posX = offsetX + (tileSize / 2) + (tile.col * tileSize)
+    const posY = offsetY + (tileSize / 2) + (tile.row * tileSize)
 
     if (tile.textureName == 'water.png') {
-      const water = this.add.sprite((tile.col*tileSize), (tile.row*tileSize), 'water').setOrigin(0).play('water')
+      const water = this.add.sprite(
+        offsetX + (tile.col * tileSize),
+        offsetY + (tile.row * tileSize),
+        'water'
+      ).setOrigin(0).play('water')
 
-      this.layerGrid.add(water)
+      layer.add(water)
       return
     }
 
-
-    /*
-    if (true) {
-      //      this.add.text((tile.col * tileSize), (tile.row*tileSize), tile.textureName, {fontFamily: "sans-serif", fontSize: 8, color: "black"})
-
-      //this.add.text(0, 0, 'Hello World', { fontFamily: 'Georgia, "Goudy Bookletter 1911", Times, serif' });
+    if (tile.atlasKey && tile.frameIndex != null && tile.frameIndex >= 0) {
+      const img = this.add.image(posX, posY, tile.atlasKey, tile.frameIndex)
+      layer.add(img)
+      img.angle = tile.textureRotation
+      img.flipX = tile.textureHorizontalFlip
+      img.flipY = tile.textureVerticalFlip
+      return
     }
-    */
 
     const tex = this.add.image(posX, posY, tile.textureName)
-    this.layerGrid.add(tex)
+    layer.add(tex)
     tex.angle = tile.textureRotation
     tex.flipX = tile.textureHorizontalFlip
     tex.flipY = tile.textureVerticalFlip
   }
 
+  preloadTilesets() {
+    this.queueGridTextureLoads(this.grid)
+  }
+
   preloadAllGridTextures() {
-    for (const tile of this.grid.allTiles()) {
+    this.queueGridTextureLoads(this.grid)
+  }
+
+  queueGridTextureLoads (grid) {
+    for (const tileset of grid.tilesets ?? []) {
+      if (!tileset.key || !tileset.image || this.textures.exists(tileset.key)) {
+        continue
+      }
+
+      this.load.spritesheet(tileset.key, tileset.image, {
+        frameWidth: tileset.tileWidth ?? 16,
+        frameHeight: tileset.tileHeight ?? 16
+      })
+    }
+
+    for (const tile of grid.allTiles()) {
+      if (tile.atlasKey) {
+        continue
+      }
+
+      if (tile.textureName?.includes('#')) {
+        continue
+      }
+
+      if (this.textures.exists(tile.textureName)) {
+        continue
+      }
+
       this.load.image(tile.textureName, 'img/textures/tiles/' + tile.textureName)
     }
+  }
+
+  beginScrollTransition (newGrid, transition) {
+    const deltaX = transition?.scrollDeltaX ?? 0
+    const deltaY = transition?.scrollDeltaY ?? 0
+
+    if (!transition || (deltaX === 0 && deltaY === 0)) {
+      return false
+    }
+
+    if (this.isScrollTransitioning) {
+      return false
+    }
+
+    this.isScrollTransitioning = true
+    this.pendingTransitionSpawns = []
+    this.activeTransition = {
+      newGrid,
+      deltaX,
+      deltaY
+    }
+
+    this.queueGridTextureLoads(newGrid)
+
+    if (this.load.isLoading()) {
+      this.load.once('complete', () => this.runScrollTransition())
+      this.load.start()
+      return true
+    }
+
+    this.runScrollTransition()
+    return true
+  }
+
+  runScrollTransition () {
+    const { newGrid, deltaX, deltaY } = this.activeTransition
+    const tileSize = 16
+    const currentW = this.grid.colCount * tileSize
+    const currentH = this.grid.rowCount * tileSize
+    const newW = newGrid.colCount * tileSize
+    const newH = newGrid.rowCount * tileSize
+    const cam = this.cameras.main
+
+    cam.stopFollow()
+
+    const minX = Math.min(0, deltaX)
+    const minY = Math.min(0, deltaY)
+    const maxX = Math.max(currentW, deltaX + newW)
+    const maxY = Math.max(currentH, deltaY + newH)
+    cam.setBounds(minX, minY, maxX - minX, maxY - minY)
+
+    this.incomingLayer = this.add.layer()
+    this.renderGridIntoLayer(newGrid, deltaX, deltaY, this.incomingLayer)
+
+    const startScrollX = cam.scrollX
+    const startScrollY = cam.scrollY
+
+    this.tweens.add({
+      targets: cam,
+      scrollX: startScrollX + deltaX,
+      scrollY: startScrollY + deltaY,
+      duration: SCROLL_TRANSITION_MS,
+      ease: 'Cubic.easeInOut',
+      onComplete: () => this.finishScrollTransition()
+    })
+  }
+
+  finishScrollTransition () {
+    const { newGrid, deltaX, deltaY } = this.activeTransition
+
+    if (this.incomingLayer != null) {
+      this.incomingLayer.destroy(true)
+      this.incomingLayer = null
+    }
+
+    this.layerGrid.removeAll(true)
+
+    for (const ent of Object.values(this.entities)) {
+      if (ent.img != null) {
+        ent.img.x -= deltaX
+        ent.img.y -= deltaY
+      }
+    }
+
+    this.grid = newGrid
+    window.gameState.grid = newGrid
+    this.renderGrid()
+    this.configureCamera()
+
+    this.isScrollTransitioning = false
+    this.activeTransition = null
+
+    for (const ent of this.pendingTransitionSpawns) {
+      this.onEntitySpawn(ent)
+    }
+    this.pendingTransitionSpawns = []
+
+    const localId = window.gameState.localPlayerEntityId
+    const localEnt = localId != null ? this.entities[localId] : null
+    if (localEnt?.img != null) {
+      this.ensureCameraFollow(localEnt)
+    }
+
+    if (isCollisionDebugEnabled()) {
+      refreshCollisionDebugOverlay()
+    }
+  }
+
+  queueTransitionSpawn (ent) {
+    this.pendingTransitionSpawns.push(ent)
+  }
+
+  handleTransitionEntityPosition (entpos) {
+    if (!this.isScrollTransitioning || this.activeTransition == null) {
+      return false
+    }
+
+    const localId = window.gameState.localPlayerEntityId
+    if (localId == null || entpos.entityId !== localId) {
+      return false
+    }
+
+    const ent = this.entities[localId]
+    if (ent?.img == null) {
+      return false
+    }
+
+    const { deltaX, deltaY } = this.activeTransition
+    ent.x = entpos.x
+    ent.y = entpos.y
+
+    if (ent.moveTween != null) {
+      ent.moveTween.stop()
+      ent.moveTween = null
+    }
+
+    ent.moveTween = this.tweens.add({
+      targets: ent.img,
+      x: entpos.x + deltaX,
+      y: entpos.y + deltaY,
+      duration: SCROLL_TRANSITION_MS,
+      ease: 'Cubic.easeInOut',
+      onComplete: () => {
+        ent.moveTween = null
+      }
+    })
+
+    return true
   }
 
   renderConnectionResponse(r) {
     this.text = 'Server: ' + r.serverVersion
   }
 
-  onEntitySpawn(ent) {
-    console.log('ent spawn', ent.definition, ent.initialState, ent.entityId, ent.x, ent.y)
-    ent.img = null
-
+  onEntitySpawn (ent) {
     this.entities[ent.entityId] = ent
+    this.renderEntity(ent)
   }
 
-  onEntityPosition(entpos) {
-    let ent = this.entities[entpos.entityId]
+  onEntityDespawn (entityId) {
+    const ent = this.entities[entityId]
+    if (ent?.img != null) {
+      ent.img.destroy()
+    }
 
-    if (ent == null) {
-      console.log('cannot find ent to reposition', entpos.entityId)
+    delete this.entities[entityId]
+  }
+
+  playWalkAnimation (img, fromX, fromY, toX, toY) {
+    if (toX > fromX) {
+      img.play('walkLeft')
+    } else if (toX < fromX) {
+      img.play('walkRight')
+    } else if (toY > fromY) {
+      img.play('walkDown')
+    } else if (toY < fromY) {
+      img.play('walkUp')
+    }
+  }
+
+  updateLocalPlayerIdleAnimation () {
+    if (isMovementKeyDown()) {
       return
     }
 
-    if (ent.img != null) {
-      //ent.img.setVelocity(0)
-
-      if (ent.img.x != entpos.x || ent.img.y != entpos.y) {
-        if (entpos.x > ent.img.x) {
-          ent.img.play('walkLeft')
-        } else if (entpos.x < ent.img.x) {
-          ent.img.play('walkRight')
-        } else if (entpos.y > ent.img.y) {
-          ent.img.play('walkDown')
-        } else {
-          ent.img.play('walkUp')
-        }
-
-        ent.img.playAfterRepeat('idle')
-
-        ent.img.x = entpos.x
-        ent.img.y = entpos.y
-
-        //ent.img.setVelocityX(20)
-        //ent.img.setVelocityY(20)
-      }
-
+    const localId = window.gameState?.localPlayerEntityId
+    if (localId == null) {
+      return
     }
+
+    const ent = this.entities[localId]
+    const img = ent?.img
+    if (img == null || ent.definition !== 'player') {
+      return
+    }
+
+    const animKey = img.anims?.currentAnim?.key
+    if (animKey != null && animKey !== 'idle') {
+      img.play('idle')
+    }
+  }
+
+  moveEntityTo (ent, x, y) {
+    const img = ent.img
+    if (img == null) {
+      return
+    }
+
+    if (img.x === x && img.y === y) {
+      return
+    }
+
+    const fromX = img.x
+    const fromY = img.y
+
+    if (ent.definition === 'player') {
+      this.playWalkAnimation(img, fromX, fromY, x, y)
+    }
+
+    if (ent.moveTween != null) {
+      ent.moveTween.stop()
+      ent.moveTween = null
+    }
+
+    ent.moveTween = this.tweens.add({
+      targets: img,
+      x,
+      y,
+      duration: MOVE_DURATION_MS,
+      ease: 'Linear',
+      onComplete: () => {
+        ent.moveTween = null
+      }
+    })
+  }
+
+  onEntityPosition (entpos) {
+    const ent = this.entities[entpos.entityId]
+
+    if (ent == null) {
+      return
+    }
+
+    ent.x = entpos.x
+    ent.y = entpos.y
+
+    if (ent.img == null) {
+      this.renderEntity(ent)
+    }
+
+    if (ent.img == null) {
+      return
+    }
+
+    this.ensureCameraFollow(ent)
+    this.moveEntityTo(ent, entpos.x, entpos.y)
   }
 
   onEntityChange(ec) {
@@ -277,9 +605,47 @@ export default class GridScene extends Phaser.Scene {
       return
     }
 
-    let newState = window.gameState.entdefs.get(ent.definition)
-    //    console.log("newstate", ec.newState, newState)
+    if (ent.img?.anims?.exists(ec.newState)) {
+      ent.img.play(ec.newState)
+    }
+  }
 
-    ent.img.play(ec.newState)
+  showCollisionDebugOverlay (isTileBlocked) {
+    this.hideCollisionDebugOverlay()
+    this.layerCollisionDebug = this.add.layer()
+    this.layerCollisionDebug.setDepth(20)
+
+    for (const tile of this.grid.allTiles()) {
+      const blocked = isTileBlocked(tile)
+      const rect = this.add.rectangle(
+        tile.col * TILE_SIZE,
+        tile.row * TILE_SIZE,
+        TILE_SIZE,
+        TILE_SIZE,
+        blocked ? 0xff3333 : 0x33ff66,
+        blocked ? 0.4 : 0.22
+      ).setOrigin(0)
+
+      this.layerCollisionDebug.add(rect)
+    }
+
+    if (this.layerEntities) {
+      this.layerEntities.setDepth(30)
+    }
+  }
+
+  hideCollisionDebugOverlay () {
+    if (this.layerCollisionDebug != null) {
+      this.layerCollisionDebug.destroy(true)
+      this.layerCollisionDebug = null
+    }
+  }
+
+  countCollisionTiles (isTileBlocked) {
+    return this.grid.allTiles().filter((tile) => isTileBlocked(tile)).length
+  }
+
+  countPassableTiles (isTileBlocked) {
+    return this.grid.allTiles().filter((tile) => !isTileBlocked(tile)).length
   }
 }
