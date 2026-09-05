@@ -121,7 +121,31 @@ export function registerDefaultCommands (gameConsole) {
       usage: '<worldId>'
     })
     .registerCommand('debug collision', () => toggleCollisionDebug(), {
-      description: 'Toggle collision tile overlay (green=passable, red=blocked)',
+      description: 'Toggle collision overlay (red=blocking rects/tiles, blue=player bounds)',
       usage: ''
+    })
+    .registerCommand('music', (args) => {
+      const bgm = window.backgroundMusic
+      if (bgm == null) {
+        return 'background music not initialized'
+      }
+
+      const cmd = (args[0] ?? 'status').toLowerCase()
+      if (cmd === 'mute' || cmd === 'off') {
+        bgm.setMuted(true)
+        return bgm.statusLine()
+      }
+      if (cmd === 'unmute' || cmd === 'on') {
+        bgm.setMuted(false)
+        return bgm.statusLine()
+      }
+      if (cmd === 'toggle') {
+        bgm.toggleMute()
+        return bgm.statusLine()
+      }
+      return bgm.statusLine()
+    }, {
+      description: 'Background music status / mute control',
+      usage: '[status|mute|unmute|toggle]'
     })
 }

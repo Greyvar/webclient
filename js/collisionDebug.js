@@ -1,3 +1,5 @@
+const COLLISION_DEBUG_STORAGE_KEY = 'greyvar.debug.collision'
+
 const DEFAULT_BLOCKING_TEXTURES = [
   'water.png',
   'barrier.png',
@@ -9,6 +11,7 @@ let blockingTexturesLoaded = false
 let blockingTexturesLoading = null
 
 const TILE_SIZE = 16
+const ENTITY_SIZE = 16
 
 export async function ensureBlockingTextures () {
   if (blockingTexturesLoaded) {
@@ -46,16 +49,116 @@ export async function ensureBlockingTextures () {
   return blockingTexturesLoading
 }
 
-export function isTileBlocked (tile) {
-  if (tile == null) {
-    return true
+export function isLegacyTileBlocked (tile) {
+  if (tile == null || tile.textureName == null || tile.textureName === '') {
+    return false
   }
 
   return blockingTextures.has(tile.textureName)
 }
 
+export function transformCollisionRect (rect, tileSize, flipH, flipV) {
+  let x = rect.x
+  let y = rect.y
+  const w = rect.w
+  const h = rect.h
+
+  if (flipH) {
+    x = tileSize - rect.x - w
+  }
+  if (flipV) {
+    y = tileSize - rect.y - h
+  }
+
+  return { x, y, w, h }
+}
+
+export function tileCollisionRectsWorld (tile) {
+  if (tile?.collision == null || tile.collision.length === 0) {
+    return []
+  }
+
+  const originX = tile.col * TILE_SIZE
+  const originY = tile.row * TILE_SIZE
+
+  return tile.collision.map((rect) => {
+    const local = transformCollisionRect(
+      rect,
+      TILE_SIZE,
+      tile.textureHorizontalFlip,
+      tile.textureVerticalFlip
+    )
+    return {
+      x: originX + local.x,
+      y: originY + local.y,
+      w: local.w,
+      h: local.h
+    }
+  })
+}
+
+export function collisionDebugStats (grid) {
+  let tsxRectCount = 0
+  let legacyBlockedCells = 0
+  let passableCells = 0
+
+  for (let row = 0; row < grid.rowCount; row++) {
+    for (let col = 0; col < grid.colCount; col++) {
+      const tile = grid.topTileAt(row, col)
+      if (tile?.collision?.length > 0) {
+        tsxRectCount += tile.collision.length
+      } else if (tile?.collisionFromTsx) {
+        passableCells++
+      } else if (isLegacyTileBlocked(tile)) {
+        legacyBlockedCells++
+      } else {
+        passableCells++
+      }
+    }
+  }
+
+  return { tsxRectCount, legacyBlockedCells, passableCells }
+}
+
 export function isCollisionDebugEnabled () {
   return window.gameState?.collisionDebugEnabled === true
+}
+
+function readStoredCollisionDebugEnabled () {
+  try {
+    return localStorage.getItem(COLLISION_DEBUG_STORAGE_KEY) === 'true'
+  } catch {
+    return false
+  }
+}
+
+function writeStoredCollisionDebugEnabled (enabled) {
+  try {
+    if (enabled) {
+      localStorage.setItem(COLLISION_DEBUG_STORAGE_KEY, 'true')
+    } else {
+      localStorage.removeItem(COLLISION_DEBUG_STORAGE_KEY)
+    }
+  } catch {
+    // ignore quota / private browsing errors
+  }
+}
+
+export function initCollisionDebugPreference (gameState) {
+  if (gameState == null) {
+    return
+  }
+
+  gameState.collisionDebugEnabled = readStoredCollisionDebugEnabled()
+}
+
+function setCollisionDebugEnabled (enabled) {
+  if (window.gameState == null) {
+    return
+  }
+
+  window.gameState.collisionDebugEnabled = enabled
+  writeStoredCollisionDebugEnabled(enabled)
 }
 
 export async function refreshCollisionDebugOverlay () {
@@ -70,7 +173,7 @@ export async function refreshCollisionDebugOverlay () {
   }
 
   await ensureBlockingTextures()
-  scene.showCollisionDebugOverlay(isTileBlocked)
+  scene.showCollisionDebugOverlay()
 }
 
 export async function toggleCollisionDebug () {
@@ -78,21 +181,25 @@ export async function toggleCollisionDebug () {
     return 'grid not loaded'
   }
 
-  window.gameState.collisionDebugEnabled = !isCollisionDebugEnabled()
+  setCollisionDebugEnabled(!isCollisionDebugEnabled())
   await refreshCollisionDebugOverlay()
 
   if (!isCollisionDebugEnabled()) {
     return 'collision debug overlay disabled'
   }
 
-  const blockedCount = window.gameState.gridScene?.countCollisionTiles?.(isTileBlocked) ?? '?'
-  const passableCount = window.gameState.gridScene?.countPassableTiles?.(isTileBlocked) ?? '?'
+  const grid = window.gameState.grid
+  const stats = grid != null ? collisionDebugStats(grid) : null
+
   return [
     'collision debug overlay enabled',
-    `blocked tiles: ${blockedCount}`,
-    `passable tiles: ${passableCount}`,
-    'green = passable, red = blocked'
-  ]
+    'red = blocking (tsx rects or legacy tile)',
+    'green = passable whole tile (legacy grids)',
+    'blue outline = player entity bounds (16x16)',
+    stats != null
+      ? `tsx collision rects: ${stats.tsxRectCount}, legacy blocked cells: ${stats.legacyBlockedCells}, passable cells: ${stats.passableCells}`
+      : null
+  ].filter(Boolean)
 }
 
-export { TILE_SIZE }
+export { TILE_SIZE, ENTITY_SIZE }

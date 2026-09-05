@@ -19,9 +19,23 @@ export default class HudScene extends Phaser.Scene {
     btnMenu.setDepth(100)
     btnMenu.setInteractive({ useHandCursor: true })
     btnMenu.on('pointerdown', this.mnuClicked)
+
+    this.input.keyboard?.on('keydown-ESC', this.onEscape, this)
+    this.events.once('shutdown', this.onShutdown, this)
   }
 
   mnuClicked () {
     window.menuSystem?.toggle('main')
+  }
+
+  onEscape () {
+    if (window.gameConsole?.isOpen?.()) {
+      return
+    }
+    window.menuSystem?.toggle('main')
+  }
+
+  onShutdown () {
+    this.input.keyboard?.off('keydown-ESC', this.onEscape, this)
   }
 }

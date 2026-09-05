@@ -9,27 +9,42 @@ export default class Grid {
     this.worldId = null
     this.tilesets = []
     this.transition = null
+    this.layers = []
+  }
 
-    for (let row = 0; row < rowCount; row++) {
+  rebuildTopTileMap () {
+    this.tileMap = []
+
+    for (let row = 0; row < this.rowCount; row++) {
       this.tileMap[row] = []
-
-      for (let col = 0; col < colCount; col++) {
-        let t = new Tile()
-        t.row = row
-        t.col = col
-
-        if (col === 0 || col === colCount - 1 || row === 0 || row === rowCount - 1) {
-          t.textureName = 'water.png'
-        } else {
-          t.textureName = 'grass.png'
-        }
-
-        this.tileMap[row][col] = t
+      for (let col = 0; col < this.colCount; col++) {
+        const top = this.topTileAt(row, col)
+        this.tileMap[row][col] = top ?? new Tile()
       }
     }
   }
 
+  topTileAt (row, col) {
+    for (let i = this.layers.length - 1; i >= 0; i--) {
+      const layer = this.layers[i]
+      for (const tile of layer.tiles) {
+        if (tile.row === row && tile.col === col) {
+          return tile
+        }
+      }
+    }
+    return null
+  }
+
+  allLayerTiles () {
+    return this.layers.flatMap((layer) => layer.tiles)
+  }
+
   allTiles() {
+    if (this.layers.length > 0) {
+      return this.tileMap.flat()
+    }
+
     return this.tileMap.flat()
   }
 

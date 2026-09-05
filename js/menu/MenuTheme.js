@@ -9,6 +9,11 @@ export const MENU_THEME = {
   item: '#c5cee0',
   itemHover: '#ffffff',
   itemDisabled: '#5a627a',
+  itemFocus: '#ffffff',
+  focusFill: 0x3a4670,
+  focusFillAlpha: 0.95,
+  focusBorder: 0x4ecca3,
   accent: '#6c8cff',
+  caret: '#4ecca3',
   fontFamily: 'monospace'
 }

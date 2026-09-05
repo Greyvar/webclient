@@ -10,6 +10,8 @@ export default class MenuSystem {
     this.sceneKey = 'menu'
     this.boundScene = null
     this.ui = null
+    this.focusIndex = 0
+    this.focusItemId = null
   }
 
   static init (game) {
@@ -58,12 +60,16 @@ export default class MenuSystem {
     }
 
     this.stack = [menuId]
+    this.focusIndex = 0
+    this.focusItemId = null
     this.ensureSceneRunning()
     this.render()
   }
 
   close () {
     this.stack = []
+    this.focusIndex = 0
+    this.focusItemId = null
     this.clearUi()
 
     if (this.game.scene.isActive(this.sceneKey)) {
@@ -86,6 +92,8 @@ export default class MenuSystem {
     }
 
     this.stack.push(menuId)
+    this.focusIndex = 0
+    this.focusItemId = null
     this.render()
   }
 
@@ -96,6 +104,8 @@ export default class MenuSystem {
     }
 
     this.stack.pop()
+    this.focusIndex = 0
+    this.focusItemId = null
     this.render()
   }
 
@@ -117,18 +127,117 @@ export default class MenuSystem {
 
   attachScene (scene) {
     this.boundScene = scene
+    this.bindKeyboard(scene)
     if (this.isOpen()) {
       this.render()
     }
   }
 
   detachScene () {
+    this.unbindKeyboard()
     this.clearUi()
     this.boundScene = null
   }
 
+  bindKeyboard (scene) {
+    this.unbindKeyboard()
+    const keyboard = scene.input.keyboard
+    if (keyboard == null) {
+      return
+    }
+
+    this._onMenuKeyDown = (event) => this.onMenuKeyDown(event)
+    keyboard.on('keydown', this._onMenuKeyDown)
+  }
+
+  unbindKeyboard () {
+    const keyboard = this.boundScene?.input?.keyboard
+    if (keyboard != null && this._onMenuKeyDown != null) {
+      keyboard.off('keydown', this._onMenuKeyDown)
+    }
+    this._onMenuKeyDown = null
+  }
+
+  onMenuKeyDown (event) {
+    if (!this.isOpen() || this.ui?.itemRows == null) {
+      return
+    }
+
+    if (window.gameConsole?.isOpen?.()) {
+      return
+    }
+
+    const code = event.code ?? event.keyCode
+    const key = event.key
+
+    if (code === 'ArrowDown' || code === 'KeyS' || key === 'ArrowDown' || key === 's' || key === 'S') {
+      event.preventDefault?.()
+      this.moveFocus(1)
+      return
+    }
+
+    if (code === 'ArrowUp' || code === 'KeyW' || key === 'ArrowUp' || key === 'w' || key === 'W') {
+      event.preventDefault?.()
+      this.moveFocus(-1)
+      return
+    }
+
+    if (code === 'Enter' || code === 'NumpadEnter' || code === 'Space' || key === 'Enter' || key === ' ') {
+      event.preventDefault?.()
+      this.activateFocused()
+      return
+    }
+
+    if (code === 'ArrowLeft' || code === 'Backspace' || key === 'ArrowLeft' || key === 'Backspace') {
+      if (this.stack.length > 1) {
+        event.preventDefault?.()
+        this.navigateBack()
+      }
+    }
+  }
+
+  selectableRows () {
+    return (this.ui?.itemRows ?? []).filter((row) => row.enabled)
+  }
+
+  moveFocus (delta) {
+    const rows = this.selectableRows()
+    if (rows.length === 0) {
+      return
+    }
+
+    const currentPos = rows.findIndex((row) => row.index === this.focusIndex)
+    const from = currentPos >= 0 ? currentPos : 0
+    const next = (from + delta + rows.length * 10) % rows.length
+    this.setFocus(rows[next].index)
+  }
+
+  setFocus (index) {
+    const rows = this.ui?.itemRows
+    if (rows == null || rows.length === 0) {
+      return
+    }
+
+    const clamped = Math.max(0, Math.min(index, rows.length - 1))
+    this.focusIndex = clamped
+    this.focusItemId = rows[clamped]?.id ?? null
+
+    for (const row of rows) {
+      this.applyFocusStyle(row, row.index === clamped)
+    }
+  }
+
+  activateFocused () {
+    const row = this.ui?.itemRows?.[this.focusIndex]
+    if (row == null || !row.enabled) {
+      return
+    }
+    row.activate()
+  }
+
   clearUi () {
     if (this.ui?.root != null) {
+      this.boundScene?.scale?.off('resize', this.ui.layoutHandler)
       this.ui.root.destroy(true)
     }
     this.ui = null
@@ -139,6 +248,35 @@ export default class MenuSystem {
       return value(ctx)
     }
     return value ?? true
+  }
+
+  applyFocusStyle (row, focused) {
+    if (!row.enabled) {
+      row.focusBg.setVisible(false)
+      row.caret.setVisible(false)
+      row.label.setColor(MENU_THEME.itemDisabled)
+      return
+    }
+
+    row.focusBg.setVisible(focused)
+    row.caret.setVisible(focused)
+    row.label.setColor(focused ? MENU_THEME.itemFocus : MENU_THEME.item)
+  }
+
+  resolveInitialFocus (itemRows) {
+    if (this.focusItemId != null) {
+      const byId = itemRows.findIndex((row) => row.id === this.focusItemId && row.enabled)
+      if (byId >= 0) {
+        return byId
+      }
+    }
+
+    if (itemRows[this.focusIndex]?.enabled) {
+      return this.focusIndex
+    }
+
+    const firstEnabled = itemRows.findIndex((row) => row.enabled)
+    return firstEnabled >= 0 ? firstEnabled : 0
   }
 
   render () {
@@ -161,7 +299,6 @@ export default class MenuSystem {
     overlay.on('pointerdown', () => this.close())
 
     const panelGfx = scene.add.graphics()
-    const panelContainer = scene.add.container(0, 0)
     const title = scene.add.text(0, 0, menu.title, {
       fontFamily: MENU_THEME.fontFamily,
       fontSize: '28px',
@@ -200,7 +337,7 @@ export default class MenuSystem {
       itemRows.push(this.makeItem(scene, item, ctx, itemRows.length))
     }
 
-    root.add([overlay, panelGfx, panelContainer, title])
+    root.add([overlay, panelGfx, title])
     if (subtitle != null) {
       root.add(subtitle)
     }
@@ -217,6 +354,7 @@ export default class MenuSystem {
       const panelH = pad * 2 + headerH + itemRows.length * rowH
       const panelX = (width - panelW) / 2
       const panelY = Math.max(24, (height - panelH) / 2)
+      const innerW = panelW - pad * 2
 
       overlay.setPosition(0, 0)
       overlay.setSize(width, height)
@@ -237,56 +375,90 @@ export default class MenuSystem {
       let rowY = panelY + pad + headerH
       for (const row of itemRows) {
         row.container.setPosition(panelX + pad, rowY)
-        row.hitArea.setSize(panelW - pad * 2, rowH - 4)
-        row.label.setWordWrapWidth(panelW - pad * 2 - 16)
+        row.hitArea.setSize(innerW, rowH - 4)
+        row.focusBg.setSize(innerW, rowH - 4)
+        row.label.setWordWrapWidth(innerW - 28)
         rowY += rowH
       }
     }
 
     layout()
-    scene.scale.off('resize', this.ui?.layoutHandler)
     this.ui = {
       root,
       layout,
-      layoutHandler: layout
+      layoutHandler: layout,
+      itemRows
     }
     scene.scale.on('resize', layout)
+
+    this.setFocus(this.resolveInitialFocus(itemRows))
   }
 
   makeItem (scene, item, ctx, index) {
     const container = scene.add.container(0, 0)
     const enabled = this.resolveValue(item.enabled ?? true, ctx)
-    const labelColor = enabled ? MENU_THEME.item : MENU_THEME.itemDisabled
+    const labelText = this.resolveValue(item.label, ctx)
+    const itemId = item.id ?? `item-${index}`
+
+    const focusBg = scene.add.rectangle(0, 0, 10, 10, MENU_THEME.focusFill, MENU_THEME.focusFillAlpha)
+    focusBg.setOrigin(0, 0)
+    focusBg.setStrokeStyle(1, MENU_THEME.focusBorder, 1)
+    focusBg.setVisible(false)
 
     const hitArea = scene.add.rectangle(0, 0, 10, 10, 0xffffff, 0.001)
     hitArea.setOrigin(0, 0)
-    const label = scene.add.text(8, 18, item.label, {
+
+    const caret = scene.add.text(6, 18, '▸', {
+      fontFamily: MENU_THEME.fontFamily,
+      fontSize: '16px',
+      color: MENU_THEME.caret
+    }).setOrigin(0, 0.5)
+    caret.setVisible(false)
+
+    const label = scene.add.text(22, 18, labelText, {
       fontFamily: MENU_THEME.fontFamily,
       fontSize: '18px',
-      color: labelColor
+      color: enabled ? MENU_THEME.item : MENU_THEME.itemDisabled
     }).setOrigin(0, 0.5)
 
-    container.add([hitArea, label])
+    container.add([focusBg, hitArea, caret, label])
+
+    const activate = () => {
+      if (!enabled) {
+        return
+      }
+
+      if (item.submenu != null) {
+        this.navigateTo(item.submenu)
+        return
+      }
+
+      if (typeof item.action === 'function') {
+        item.action(ctx)
+      }
+    }
 
     if (enabled) {
       hitArea.setInteractive({ useHandCursor: true })
-      hitArea.on('pointerover', () => label.setColor(MENU_THEME.itemHover))
-      hitArea.on('pointerout', () => label.setColor(MENU_THEME.item))
+      hitArea.on('pointerover', () => this.setFocus(index))
       hitArea.on('pointerdown', (pointer) => {
         pointer.event.stopPropagation()
-
-        if (item.submenu != null) {
-          this.navigateTo(item.submenu)
-          return
-        }
-
-        if (typeof item.action === 'function') {
-          item.action(ctx)
-        }
+        this.setFocus(index)
+        activate()
       })
     }
 
-    return { container, hitArea, label, index }
+    return {
+      id: itemId,
+      container,
+      hitArea,
+      focusBg,
+      caret,
+      label,
+      index,
+      enabled,
+      activate
+    }
   }
 }
 
@@ -310,6 +482,16 @@ export function registerDefaultMenus (menuSystem) {
           } else {
             window.phaser.scale.stopFullscreen()
           }
+        }
+      },
+      {
+        id: 'music',
+        label: () => window.backgroundMusic?.isMuted()
+          ? 'Unmute music'
+          : 'Mute music',
+        action: ({ menuSystem: ms }) => {
+          window.backgroundMusic?.toggleMute()
+          ms.render()
         }
       },
       {

@@ -7,17 +7,10 @@ export default class MenuScene extends Phaser.Scene {
 
   create () {
     window.menuSystem?.attachScene(this)
-
-    this.input.keyboard?.on('keydown-ESC', this.onEscape, this)
     this.events.once('shutdown', this.onShutdown, this)
   }
 
-  onEscape () {
-    window.menuSystem?.close()
-  }
-
   onShutdown () {
-    this.input.keyboard?.off('keydown-ESC', this.onEscape, this)
     window.menuSystem?.detachScene()
   }
 }

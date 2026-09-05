@@ -1,7 +1,7 @@
 import GridScene from './scenes/GridScene.js'
 import { normalizeEntitySpawn, normalizeEntityPosition, entityId } from './entityUtils.js'
 import { logGreyvar, sceneSnapshot } from './sceneDebug.js'
-import { isCollisionDebugEnabled, refreshCollisionDebugOverlay } from './collisionDebug.js'
+import { initCollisionDebugPreference, isCollisionDebugEnabled, refreshCollisionDebugOverlay } from './collisionDebug.js'
 
 export default class GameState {
   entdefs = new Map()
@@ -14,7 +14,9 @@ export default class GameState {
   localPlayerEntityId = null
   collisionDebugEnabled = false
 
-  constructor () {}
+  constructor () {
+    initCollisionDebugPreference(this)
+  }
 
   addMessage (m) {}
 
@@ -242,6 +244,10 @@ export default class GameState {
   onEntityDespawn (rawId) {
     const id = entityId(rawId)
     if (id == null || this.gridScene == null) {
+      return
+    }
+
+    if (this.gridScene.isScrollTransitioning && id === this.localPlayerEntityId) {
       return
     }
 

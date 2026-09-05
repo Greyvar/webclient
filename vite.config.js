@@ -17,6 +17,7 @@ const contentTypes = {
   '.ttf': 'font/ttf',
   '.ogg': 'audio/ogg',
   '.wav': 'audio/wav',
+  '.mp3': 'audio/mpeg',
 }
 
 function greyvarResPlugin() {

@@ -9,6 +9,7 @@ import MenuSystem, { registerDefaultMenus } from './menu/MenuSystem.js'
 import GameConsole from './console/GameConsole.js'
 import { registerDefaultCommands } from './console/commands.js'
 import ConsoleScene from './scenes/ConsoleScene.js'
+import BackgroundMusic from './BackgroundMusic.js'
 import Phaser from 'phaser'
 import { sceneSnapshot } from './sceneDebug.js'
 
@@ -61,6 +62,9 @@ export function init() {
 
   const gameConsole = GameConsole.init(window.phaser)
   registerDefaultCommands(gameConsole)
+
+  const backgroundMusic = BackgroundMusic.init(window.phaser)
+  backgroundMusic.bindUnlock()
 
   const canvas = window.phaser.canvas
   canvas.setAttribute('tabindex', '0')

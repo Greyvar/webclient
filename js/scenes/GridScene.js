@@ -1,8 +1,8 @@
 import Phaser from 'phaser'
 import { initMovementInput, pollMovementInput, isMovementKeyDown } from '../MovementInput.js'
-import { TILE_SIZE, isCollisionDebugEnabled, refreshCollisionDebugOverlay } from '../collisionDebug.js'
+import { TILE_SIZE, ENTITY_SIZE, isCollisionDebugEnabled, refreshCollisionDebugOverlay, tileCollisionRectsWorld, isLegacyTileBlocked } from '../collisionDebug.js'
 
-const MOVE_DURATION_MS = 100
+const MOVE_DURATION_MS = 67
 const SCROLL_TRANSITION_MS = 380
 
 export default class GridScene extends Phaser.Scene {
@@ -39,9 +39,10 @@ export default class GridScene extends Phaser.Scene {
   }
 
   preloadEntdefSprite(entdef) {
+    const frameSize = entdef.name === 'player' ? 16 : 15
     this.load.spritesheet(entdef.name, 'img/textures/entities/' + entdef.texture, {
-      frameWidth: 15,
-      frameHeight: 15,
+      frameWidth: frameSize,
+      frameHeight: frameSize,
     })
   }
 
@@ -118,6 +119,14 @@ export default class GridScene extends Phaser.Scene {
     for (const id of Object.keys(this.entities)) {
       if (this.entities[id].img == null) {
         this.renderEntity(this.entities[id])
+      }
+    }
+
+    if (isCollisionDebugEnabled() && this.collisionDebugPlayerOutline != null) {
+      const localId = window.gameState?.localPlayerEntityId
+      const ent = localId != null ? this.entities[localId] : null
+      if (ent?.img != null) {
+        this.collisionDebugPlayerOutline.setPosition(ent.img.x, ent.img.y)
       }
     }
   }
@@ -215,54 +224,40 @@ export default class GridScene extends Phaser.Scene {
     }
 
     for (const state of entdef.states) {
-//      console.log('creating animation for ', definition, 'state:', state.name, 'with frames:', state.frames)
+      if (state?.name == null || !Array.isArray(state.frames) || state.frames.length === 0) {
+        continue
+      }
 
+      const isWalk = String(state.name).startsWith('walk')
       img.anims.create({
         key: state.name,
-        frameRate: 2,
-        frames: this.anims.generateFrameNumbers(definition, {frames: state.frames}),
-        repeat: -1
-      })
-    }
-
-    if (definition == 'player') {
-      img.anims.create({
-        key: 'walkLeft',
-        frameRate: 8,
-        frames: this.anims.generateFrameNumbers(definition, {start: 4, end: 7}),
-        repeat: 0,
-      })
-
-      img.anims.create({
-        key: 'walkRight',
-        frameRate: 8,
-        frames: this.anims.generateFrameNumbers(definition, {start: 8, end: 11}),
-        repeat: 0,
-      })
-
-      img.anims.create({
-        key: 'walkUp',
-        frameRate: 8,
-        frames: this.anims.generateFrameNumbers(definition, {start: 12, end: 15}),
-        repeat: 0,
-      })
-
-      img.anims.create({
-        key: 'walkDown',
-        frameRate: 8,
-        frames: this.anims.generateFrameNumbers(definition, {start: 16, end: 19}),
-        repeat: 0,
+        frameRate: isWalk ? 8 : 2,
+        frames: this.anims.generateFrameNumbers(definition, { frames: state.frames }),
+        repeat: isWalk ? 0 : -1
       })
     }
   }
 
   renderGrid() {
+    if (this.grid.layers?.length > 0) {
+      for (const layerDef of this.grid.layers) {
+        const phaserLayer = this.add.layer()
+        this.layerGrid.add(phaserLayer)
+        this.renderTiles(layerDef.tiles, { offsetX: 0, offsetY: 0, layer: phaserLayer })
+      }
+      return
+    }
+
     this.renderGridIntoLayer(this.grid, 0, 0, this.layerGrid)
   }
 
   renderGridIntoLayer (grid, offsetX, offsetY, layer) {
-    for (const tile of grid.allTiles()) {
-      this.renderTile(tile, { offsetX, offsetY, layer })
+    this.renderTiles(grid.allTiles(), { offsetX, offsetY, layer })
+  }
+
+  renderTiles (tiles, opts = {}) {
+    for (const tile of tiles) {
+      this.renderTile(tile, opts)
     }
   }
 
@@ -322,7 +317,7 @@ export default class GridScene extends Phaser.Scene {
       })
     }
 
-    for (const tile of grid.allTiles()) {
+    for (const tile of grid.allLayerTiles?.() ?? grid.allTiles()) {
       if (tile.atlasKey) {
         continue
       }
@@ -389,7 +384,13 @@ export default class GridScene extends Phaser.Scene {
     cam.setBounds(minX, minY, maxX - minX, maxY - minY)
 
     this.incomingLayer = this.add.layer()
-    this.renderGridIntoLayer(newGrid, deltaX, deltaY, this.incomingLayer)
+    if (newGrid.layers?.length > 0) {
+      for (const layerDef of newGrid.layers) {
+        this.renderTiles(layerDef.tiles, { offsetX: deltaX, offsetY: deltaY, layer: this.incomingLayer })
+      }
+    } else {
+      this.renderGridIntoLayer(newGrid, deltaX, deltaY, this.incomingLayer)
+    }
 
     const startScrollX = cam.scrollX
     const startScrollY = cam.scrollY
@@ -507,9 +508,9 @@ export default class GridScene extends Phaser.Scene {
 
   playWalkAnimation (img, fromX, fromY, toX, toY) {
     if (toX > fromX) {
-      img.play('walkLeft')
-    } else if (toX < fromX) {
       img.play('walkRight')
+    } else if (toX < fromX) {
+      img.play('walkLeft')
     } else if (toY > fromY) {
       img.play('walkDown')
     } else if (toY < fromY) {
@@ -593,6 +594,11 @@ export default class GridScene extends Phaser.Scene {
 
     this.ensureCameraFollow(ent)
     this.moveEntityTo(ent, entpos.x, entpos.y)
+
+    const localId = window.gameState?.localPlayerEntityId
+    if (isCollisionDebugEnabled() && localId != null && entpos.entityId === localId) {
+      this.updateCollisionDebugPlayerOutline(entpos.x, entpos.y)
+    }
   }
 
   onEntityChange(ec) {
@@ -610,23 +616,60 @@ export default class GridScene extends Phaser.Scene {
     }
   }
 
-  showCollisionDebugOverlay (isTileBlocked) {
+  showCollisionDebugOverlay () {
     this.hideCollisionDebugOverlay()
     this.layerCollisionDebug = this.add.layer()
     this.layerCollisionDebug.setDepth(20)
 
-    for (const tile of this.grid.allTiles()) {
-      const blocked = isTileBlocked(tile)
-      const rect = this.add.rectangle(
-        tile.col * TILE_SIZE,
-        tile.row * TILE_SIZE,
-        TILE_SIZE,
-        TILE_SIZE,
-        blocked ? 0xff3333 : 0x33ff66,
-        blocked ? 0.4 : 0.22
-      ).setOrigin(0)
+    for (let row = 0; row < this.grid.rowCount; row++) {
+      for (let col = 0; col < this.grid.colCount; col++) {
+        const tile = this.grid.topTileAt(row, col)
+        if (tile == null) {
+          continue
+        }
 
-      this.layerCollisionDebug.add(rect)
+        if (tile.collision?.length > 0) {
+          for (const rect of tileCollisionRectsWorld(tile)) {
+            const box = this.add.rectangle(
+              rect.x,
+              rect.y,
+              rect.w,
+              rect.h,
+              0xff3333,
+              0.55
+            ).setOrigin(0)
+            this.layerCollisionDebug.add(box)
+          }
+          continue
+        }
+
+        if (tile.collisionFromTsx) {
+          continue
+        }
+
+        const blocked = isLegacyTileBlocked(tile)
+        const cell = this.add.rectangle(
+          col * TILE_SIZE,
+          row * TILE_SIZE,
+          TILE_SIZE,
+          TILE_SIZE,
+          blocked ? 0xff3333 : 0x33ff66,
+          blocked ? 0.35 : 0.18
+        ).setOrigin(0)
+        this.layerCollisionDebug.add(cell)
+      }
+    }
+
+    const localId = window.gameState?.localPlayerEntityId
+    const localEnt = localId != null ? this.entities[localId] : null
+    if (localEnt?.img != null) {
+      this.collisionDebugPlayerOutline = this.add.rectangle(
+        localEnt.img.x,
+        localEnt.img.y,
+        ENTITY_SIZE,
+        ENTITY_SIZE
+      ).setOrigin(0).setStrokeStyle(1, 0x3399ff, 1).setFillStyle(0x3399ff, 0.12)
+      this.layerCollisionDebug.add(this.collisionDebugPlayerOutline)
     }
 
     if (this.layerEntities) {
@@ -639,13 +682,12 @@ export default class GridScene extends Phaser.Scene {
       this.layerCollisionDebug.destroy(true)
       this.layerCollisionDebug = null
     }
+    this.collisionDebugPlayerOutline = null
   }
 
-  countCollisionTiles (isTileBlocked) {
-    return this.grid.allTiles().filter((tile) => isTileBlocked(tile)).length
-  }
-
-  countPassableTiles (isTileBlocked) {
-    return this.grid.allTiles().filter((tile) => !isTileBlocked(tile)).length
+  updateCollisionDebugPlayerOutline (x, y) {
+    if (this.collisionDebugPlayerOutline != null) {
+      this.collisionDebugPlayerOutline.setPosition(x, y)
+    }
   }
 }

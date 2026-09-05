@@ -9,6 +9,8 @@ export default class Tile {
     this.textureRotation = 0
     this.atlasKey = null
     this.frameIndex = null
+    this.collision = []
+    this.collisionFromTsx = false
   }
 
   fromNet (netTile) {
@@ -21,5 +23,12 @@ export default class Tile {
     this.textureRotation = netTile.rot ?? 0
     this.atlasKey = netTile.atlasKey ?? null
     this.frameIndex = netTile.frameIndex ?? null
+    this.collisionFromTsx = netTile.collisionFromTsx ?? false
+    this.collision = (netTile.collision ?? []).map((rect) => ({
+      x: rect.x ?? 0,
+      y: rect.y ?? 0,
+      w: rect.w ?? 0,
+      h: rect.h ?? 0
+    }))
   }
 }

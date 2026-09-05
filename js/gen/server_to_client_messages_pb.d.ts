@@ -291,6 +291,37 @@ export declare type PlayerYou = Message<"greyvarproto.PlayerYou"> & {
 export declare const PlayerYouSchema: GenMessage<PlayerYou>;
 
 /**
+ * @generated from message greyvarproto.CollisionRect
+ */
+export declare type CollisionRect = Message<"greyvarproto.CollisionRect"> & {
+  /**
+   * @generated from field: float x = 1;
+   */
+  x: number;
+
+  /**
+   * @generated from field: float y = 2;
+   */
+  y: number;
+
+  /**
+   * @generated from field: float w = 3;
+   */
+  w: number;
+
+  /**
+   * @generated from field: float h = 4;
+   */
+  h: number;
+};
+
+/**
+ * Describes the message greyvarproto.CollisionRect.
+ * Use `create(CollisionRectSchema)` to create a new message.
+ */
+export declare const CollisionRectSchema: GenMessage<CollisionRect>;
+
+/**
  * @generated from message greyvarproto.Tile
  */
 export declare type Tile = Message<"greyvarproto.Tile"> & {
@@ -333,6 +364,16 @@ export declare type Tile = Message<"greyvarproto.Tile"> & {
    * @generated from field: int32 frameIndex = 8;
    */
   frameIndex: number;
+
+  /**
+   * @generated from field: repeated greyvarproto.CollisionRect collision = 9;
+   */
+  collision: CollisionRect[];
+
+  /**
+   * @generated from field: bool collisionFromTsx = 10;
+   */
+  collisionFromTsx: boolean;
 };
 
 /**
@@ -376,6 +417,32 @@ export declare type Tileset = Message<"greyvarproto.Tileset"> & {
  * Use `create(TilesetSchema)` to create a new message.
  */
 export declare const TilesetSchema: GenMessage<Tileset>;
+
+/**
+ * @generated from message greyvarproto.GridLayer
+ */
+export declare type GridLayer = Message<"greyvarproto.GridLayer"> & {
+  /**
+   * @generated from field: string name = 1;
+   */
+  name: string;
+
+  /**
+   * @generated from field: string kind = 2;
+   */
+  kind: string;
+
+  /**
+   * @generated from field: repeated greyvarproto.Tile tiles = 3;
+   */
+  tiles: Tile[];
+};
+
+/**
+ * Describes the message greyvarproto.GridLayer.
+ * Use `create(GridLayerSchema)` to create a new message.
+ */
+export declare const GridLayerSchema: GenMessage<GridLayer>;
 
 /**
  * @generated from message greyvarproto.GridTransition
@@ -446,6 +513,11 @@ export declare type Grid = Message<"greyvarproto.Grid"> & {
    * @generated from field: greyvarproto.GridTransition transition = 8;
    */
   transition?: GridTransition | undefined;
+
+  /**
+   * @generated from field: repeated greyvarproto.GridLayer layers = 9;
+   */
+  layers: GridLayer[];
 };
 
 /**

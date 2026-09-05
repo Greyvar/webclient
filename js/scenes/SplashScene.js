@@ -27,6 +27,7 @@ export default class SplashScene extends Phaser.Scene {
   preload () {
     this.load.setBaseURL('/res/')
     this.load.image('logo', 'img/logo32.png')
+    window.backgroundMusic?.queueLoad(this)
   }
 
   create () {

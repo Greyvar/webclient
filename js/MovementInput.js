@@ -3,7 +3,7 @@ let cursors = null
 let wasd = null
 let initialized = false
 
-const MOVE_INTERVAL_MS = 100
+const MOVE_INTERVAL_MS = 67
 
 export function initMovementInput (scene) {
   if (initialized) {
