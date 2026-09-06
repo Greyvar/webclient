@@ -9,6 +9,7 @@ export default class GameState {
   gridScene = null
   grid = null
   pendingSpawns = []
+  inventory = []
 
   hackHasLoadedLogo = false
   localPlayerEntityId = null
@@ -255,6 +256,25 @@ export default class GameState {
   }
 
   onEntdef (entdef) {
+    if (entdef?.name == null) {
+      return
+    }
+
+    const existing = this.entdefs.get(entdef.name)
+    // Prefer keeping a definition that already has frame data if the update is empty.
+    if (existing?.states?.some((s) => s?.frames?.length > 0) &&
+        !entdef.states?.some((s) => s?.frames?.length > 0)) {
+      return
+    }
+
     this.entdefs.set(entdef.name, entdef)
+  }
+
+  onInventoryUpdate (update) {
+    this.inventory = Array.isArray(update?.items) ? update.items.map((item) => ({
+      definition: item.definition ?? '',
+      count: item.count ?? 1
+    })) : []
+    logGreyvar('inventory update', { items: this.inventory })
   }
 }

@@ -97,6 +97,31 @@ export function tileCollisionRectsWorld (tile) {
   })
 }
 
+/** Entity-state collision rects in world pixels (tile-local shapes from entity tileset). */
+export function entityCollisionRectsWorld (ent, entdef) {
+  if (ent == null || entdef == null || !Array.isArray(entdef.states)) {
+    return []
+  }
+
+  const stateName = ent.state || ent.initialState
+  const state = entdef.states.find((s) => s?.name === stateName)
+    || entdef.states.find((s) => s?.name === ent.initialState)
+    || entdef.states[0]
+  if (state?.collision == null || state.collision.length === 0) {
+    return []
+  }
+
+  const originX = ent.img?.x ?? ent.x ?? 0
+  const originY = ent.img?.y ?? ent.y ?? 0
+
+  return state.collision.map((rect) => ({
+    x: originX + (rect.x ?? 0),
+    y: originY + (rect.y ?? 0),
+    w: rect.w ?? 0,
+    h: rect.h ?? 0
+  }))
+}
+
 export function collisionDebugStats (grid) {
   let tsxRectCount = 0
   let legacyBlockedCells = 0
@@ -193,7 +218,7 @@ export async function toggleCollisionDebug () {
 
   return [
     'collision debug overlay enabled',
-    'red = blocking (tsx rects or legacy tile)',
+    'red = tile blocking, orange = entity tileset collision, blue = player',
     'green = passable whole tile (legacy grids)',
     'blue outline = player entity bounds (16x16)',
     stats != null

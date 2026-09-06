@@ -37,6 +37,7 @@ export function init() {
       maxTextures: 7,
       pixelArt: true,
       antialias: false,
+      roundPixels: true,
     },
     scale: {
       mode: Phaser.Scale.RESIZE,

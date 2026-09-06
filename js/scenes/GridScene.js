@@ -1,6 +1,6 @@
 import Phaser from 'phaser'
 import { initMovementInput, pollMovementInput, isMovementKeyDown } from '../MovementInput.js'
-import { TILE_SIZE, ENTITY_SIZE, isCollisionDebugEnabled, refreshCollisionDebugOverlay, tileCollisionRectsWorld, isLegacyTileBlocked } from '../collisionDebug.js'
+import { TILE_SIZE, ENTITY_SIZE, isCollisionDebugEnabled, refreshCollisionDebugOverlay, tileCollisionRectsWorld, entityCollisionRectsWorld, isLegacyTileBlocked } from '../collisionDebug.js'
 
 const MOVE_DURATION_MS = 67
 const SCROLL_TRANSITION_MS = 380
@@ -39,10 +39,21 @@ export default class GridScene extends Phaser.Scene {
   }
 
   preloadEntdefSprite(entdef) {
+    if (entdef?.texture == null || entdef.texture === '') {
+      return
+    }
+
+    // Key by texture file so pot/key/chest sharing general-entities.png use one
+    // spritesheet. Loading the same URL under many entity names breaks frames.
+    const textureKey = entdef.texture
+    if (this.textures.exists(textureKey)) {
+      return
+    }
+
     const frameSize = entdef.name === 'player' ? 16 : 15
-    this.load.spritesheet(entdef.name, 'img/textures/entities/' + entdef.texture, {
+    this.load.spritesheet(textureKey, 'img/textures/entities/' + entdef.texture, {
       frameWidth: frameSize,
-      frameHeight: frameSize,
+      frameHeight: frameSize
     })
   }
 
@@ -79,7 +90,8 @@ export default class GridScene extends Phaser.Scene {
   }
 
   spriteKeyForEntity (ent) {
-    return ent.definition
+    const entdef = window.gameState.entdefs.get(ent.definition)
+    return entdef?.texture || ent.definition
   }
 
   initialStateForEntity (ent) {
@@ -88,7 +100,23 @@ export default class GridScene extends Phaser.Scene {
     }
 
     const entdef = window.gameState.entdefs.get(ent.definition)
-    return entdef?.initialState ?? 'idle'
+    return entdef?.states?.[0]?.name ?? 'idle'
+  }
+
+  animKeyForEntity (definition, stateName) {
+    return `${definition}:${stateName}`
+  }
+
+  stateFramesForEntity (ent, entdef) {
+    if (entdef?.states == null) {
+      return null
+    }
+
+    const stateName = this.initialStateForEntity(ent)
+    return entdef.states.find((s) => s?.name === stateName)
+      || entdef.states.find((s) => s?.name === ent.state)
+      || entdef.states[0]
+      || null
   }
 
   configureCamera () {
@@ -97,10 +125,47 @@ export default class GridScene extends Phaser.Scene {
     const worldH = this.grid.rowCount * tileSize
     const cam = this.cameras.main
 
+    // Even integer viewport avoids half-pixel camera origins under RESIZE.
+    const viewW = Math.max(2, Math.floor(this.scale.width / 2) * 2)
+    const viewH = Math.max(2, Math.floor(this.scale.height / 2) * 2)
     cam.setBounds(0, 0, worldW, worldH)
-    cam.setSize(this.scale.width, this.scale.height)
+    cam.setSize(viewW, viewH)
     cam.setZoom(6)
     cam.roundPixels = true
+    this.patchCameraScrollSnap(cam)
+    this.snapCameraScroll()
+  }
+
+  // Camera follow runs inside Camera.preRender (after Scene.update). Snapping in
+  // update() is overwritten before draw — patch so we snap after follow, before render.
+  patchCameraScrollSnap (cam) {
+    if (cam == null || cam._greyvarScrollSnapPatched) {
+      return
+    }
+
+    const originalPreRender = cam.preRender.bind(cam)
+    cam.preRender = () => {
+      originalPreRender()
+      this.snapCameraScroll()
+    }
+    cam._greyvarScrollSnapPatched = true
+  }
+
+  snapCameraScroll () {
+    const cam = this.cameras.main
+    if (cam == null) {
+      return
+    }
+    const z = cam.zoom || 1
+    cam.scrollX = Math.round(cam.scrollX * z) / z
+    cam.scrollY = Math.round(cam.scrollY * z) / z
+  }
+
+  // Cover sub-pixel atlas sampling gaps under camera zoom (1 display pixel).
+  applyTileSeamBleed (img, tileSize) {
+    const zoom = Math.max(1, this.cameras.main?.zoom ?? 1)
+    const size = tileSize + (1 / zoom)
+    img.setDisplaySize(size, size)
   }
 
   mnuClicked() {
@@ -175,22 +240,37 @@ export default class GridScene extends Phaser.Scene {
       return
     }
 
-    const spriteKey = this.spriteKeyForEntity(ent)
-    if (!spriteKey || !this.textures.exists(spriteKey)) {
-      return
-    }
-
     const entdef = window.gameState.entdefs.get(ent.definition)
     if (entdef == null) {
       return
     }
 
-    const img = this.add.sprite(ent.x ?? 0, ent.y ?? 0, spriteKey)
+    const spriteKey = this.spriteKeyForEntity(ent)
+    if (!spriteKey || !this.textures.exists(spriteKey)) {
+      this.preloadEntdefSprite(entdef)
+      if (this.load.isLoading()) {
+        this.load.once('complete', () => this.renderEntity(ent))
+        this.load.start()
+      }
+      return
+    }
+
+    const state = this.stateFramesForEntity(ent, entdef)
+    const frame = state?.frames?.[0]
+    const img = frame != null
+      ? this.add.sprite(ent.x ?? 0, ent.y ?? 0, spriteKey, frame)
+      : this.add.sprite(ent.x ?? 0, ent.y ?? 0, spriteKey)
 
     this.createEntityAnimations(img, ent.definition)
 
     img.setOrigin(0)
-    img.play(this.initialStateForEntity(ent))
+    const stateName = state?.name ?? this.initialStateForEntity(ent)
+    const animKey = this.animKeyForEntity(ent.definition, stateName)
+    if (img.anims?.exists(animKey) || this.anims?.exists(animKey)) {
+      img.play(animKey)
+    } else if (frame != null) {
+      img.setFrame(frame)
+    }
 
     ent.img = img
 
@@ -223,18 +303,48 @@ export default class GridScene extends Phaser.Scene {
       return
     }
 
+    const textureKey = entdef.texture || definition
+
     for (const state of entdef.states) {
       if (state?.name == null || !Array.isArray(state.frames) || state.frames.length === 0) {
         continue
       }
 
+      const animKey = this.animKeyForEntity(definition, state.name)
+      if (img.anims.exists(animKey)) {
+        continue
+      }
+
       const isWalk = String(state.name).startsWith('walk')
-      img.anims.create({
-        key: state.name,
-        frameRate: isWalk ? 8 : 2,
-        frames: this.anims.generateFrameNumbers(definition, { frames: state.frames }),
-        repeat: isWalk ? 0 : -1
+      const defaultFrameRate = isWalk ? 10 : 2
+      const defaultHoldMs = Math.round(1000 / defaultFrameRate)
+      const holds = Array.isArray(state.holds) ? state.holds : []
+      // Tiled walk clips often ship duration=0; treat that as "use frameRate".
+      const hasHolds = holds.some((hold) => hold > 0)
+
+      const frames = state.frames.map((frame, index) => {
+        const entry = { key: textureKey, frame }
+        const hold = holds[index]
+        if (hold > 0) {
+          entry.duration = hold
+        } else if (hasHolds) {
+          entry.duration = defaultHoldMs
+        }
+        return entry
       })
+
+      const anim = {
+        key: animKey,
+        frames,
+        // Walk must loop: moves arrive every ~67ms and would otherwise restart
+        // a one-shot clip on frame 0 forever (looks static).
+        repeat: -1
+      }
+      if (!hasHolds) {
+        anim.frameRate = defaultFrameRate
+      }
+
+      img.anims.create(anim)
     }
   }
 
@@ -267,34 +377,43 @@ export default class GridScene extends Phaser.Scene {
     const offsetY = opts.offsetY ?? 0
     const layer = opts.layer ?? this.layerGrid
 
-    const posX = offsetX + (tileSize / 2) + (tile.col * tileSize)
-    const posY = offsetY + (tileSize / 2) + (tile.row * tileSize)
+    // Integer top-left cell origin. Keep vertex rounding off under camera zoom:
+    // 'safe' rounding snaps each tile independently and opens 1px seams.
+    const cellX = Math.round(offsetX + tile.col * tileSize)
+    const cellY = Math.round(offsetY + tile.row * tileSize)
+    const rotated = ((tile.textureRotation ?? 0) % 360) !== 0
+    const flipped = !!(tile.textureHorizontalFlip || tile.textureVerticalFlip)
+    const useCenter = rotated || flipped
 
     if (tile.textureName == 'water.png') {
-      const water = this.add.sprite(
-        offsetX + (tile.col * tileSize),
-        offsetY + (tile.row * tileSize),
-        'water'
-      ).setOrigin(0).play('water')
-
+      const water = this.add.sprite(cellX, cellY, 'water')
+        .setOrigin(0)
+        .setVertexRoundMode('off')
+        .play('water')
+      this.applyTileSeamBleed(water, tileSize)
       layer.add(water)
       return
     }
 
+    let img
     if (tile.atlasKey && tile.frameIndex != null && tile.frameIndex >= 0) {
-      const img = this.add.image(posX, posY, tile.atlasKey, tile.frameIndex)
-      layer.add(img)
-      img.angle = tile.textureRotation
-      img.flipX = tile.textureHorizontalFlip
-      img.flipY = tile.textureVerticalFlip
-      return
+      if (useCenter) {
+        img = this.add.image(cellX + tileSize / 2, cellY + tileSize / 2, tile.atlasKey, tile.frameIndex)
+      } else {
+        img = this.add.image(cellX, cellY, tile.atlasKey, tile.frameIndex).setOrigin(0)
+      }
+    } else if (useCenter) {
+      img = this.add.image(cellX + tileSize / 2, cellY + tileSize / 2, tile.textureName)
+    } else {
+      img = this.add.image(cellX, cellY, tile.textureName).setOrigin(0)
     }
 
-    const tex = this.add.image(posX, posY, tile.textureName)
-    layer.add(tex)
-    tex.angle = tile.textureRotation
-    tex.flipX = tile.textureHorizontalFlip
-    tex.flipY = tile.textureVerticalFlip
+    img.setVertexRoundMode('off')
+    this.applyTileSeamBleed(img, tileSize)
+    img.angle = tile.textureRotation
+    img.flipX = tile.textureHorizontalFlip
+    img.flipY = tile.textureVerticalFlip
+    layer.add(img)
   }
 
   preloadTilesets() {
@@ -386,22 +505,40 @@ export default class GridScene extends Phaser.Scene {
     this.incomingLayer = this.add.layer()
     if (newGrid.layers?.length > 0) {
       for (const layerDef of newGrid.layers) {
-        this.renderTiles(layerDef.tiles, { offsetX: deltaX, offsetY: deltaY, layer: this.incomingLayer })
+        this.renderTiles(layerDef.tiles, {
+          offsetX: deltaX,
+          offsetY: deltaY,
+          layer: this.incomingLayer
+        })
       }
     } else {
       this.renderGridIntoLayer(newGrid, deltaX, deltaY, this.incomingLayer)
     }
 
+    this.snapCameraScroll()
     const startScrollX = cam.scrollX
     const startScrollY = cam.scrollY
+    const endScrollX = startScrollX + deltaX
+    const endScrollY = startScrollY + deltaY
+    const zoom = cam.zoom || 1
+    const progress = { t: 0 }
 
     this.tweens.add({
-      targets: cam,
-      scrollX: startScrollX + deltaX,
-      scrollY: startScrollY + deltaY,
+      targets: progress,
+      t: 1,
       duration: SCROLL_TRANSITION_MS,
       ease: 'Cubic.easeInOut',
-      onComplete: () => this.finishScrollTransition()
+      onUpdate: () => {
+        const x = startScrollX + (endScrollX - startScrollX) * progress.t
+        const y = startScrollY + (endScrollY - startScrollY) * progress.t
+        cam.scrollX = Math.round(x * zoom) / zoom
+        cam.scrollY = Math.round(y * zoom) / zoom
+      },
+      onComplete: () => {
+        cam.scrollX = Math.round(endScrollX * zoom) / zoom
+        cam.scrollY = Math.round(endScrollY * zoom) / zoom
+        this.finishScrollTransition()
+      }
     })
   }
 
@@ -493,8 +630,14 @@ export default class GridScene extends Phaser.Scene {
   }
 
   onEntitySpawn (ent) {
+    if (ent.state == null) {
+      ent.state = this.initialStateForEntity(ent)
+    }
     this.entities[ent.entityId] = ent
     this.renderEntity(ent)
+    if (isCollisionDebugEnabled()) {
+      refreshCollisionDebugOverlay()
+    }
   }
 
   onEntityDespawn (entityId) {
@@ -507,14 +650,33 @@ export default class GridScene extends Phaser.Scene {
   }
 
   playWalkAnimation (img, fromX, fromY, toX, toY) {
-    if (toX > fromX) {
-      img.play('walkRight')
-    } else if (toX < fromX) {
-      img.play('walkLeft')
-    } else if (toY > fromY) {
-      img.play('walkDown')
-    } else if (toY < fromY) {
-      img.play('walkUp')
+    const dx = toX - fromX
+    const dy = toY - fromY
+
+    let state = null
+    if (dx < 0 && dy < 0) {
+      state = 'walkUpLeft'
+    } else if (dx > 0 && dy < 0) {
+      state = 'walkUpRight'
+    } else if (dx < 0 && dy > 0) {
+      state = 'walkDownLeft'
+    } else if (dx > 0 && dy > 0) {
+      state = 'walkDownRight'
+    } else if (dx > 0) {
+      state = 'walkRight'
+    } else if (dx < 0) {
+      state = 'walkLeft'
+    } else if (dy > 0) {
+      state = 'walkDown'
+    } else if (dy < 0) {
+      state = 'walkUp'
+    }
+
+    if (state != null) {
+      const animKey = this.animKeyForEntity('player', state)
+      // Don't restart mid-stride on every MoveRequest (~67ms) or the clip
+      // never advances past the first frame.
+      img.play(animKey, true)
     }
   }
 
@@ -534,9 +696,10 @@ export default class GridScene extends Phaser.Scene {
       return
     }
 
+    const idleKey = this.animKeyForEntity('player', 'idle')
     const animKey = img.anims?.currentAnim?.key
-    if (animKey != null && animKey !== 'idle') {
-      img.play('idle')
+    if (animKey != null && animKey !== idleKey) {
+      img.play(idleKey)
     }
   }
 
@@ -611,8 +774,23 @@ export default class GridScene extends Phaser.Scene {
       return
     }
 
-    if (ent.img?.anims?.exists(ec.newState)) {
-      ent.img.play(ec.newState)
+    if (ec.newState) {
+      ent.state = ec.newState
+      const animKey = this.animKeyForEntity(ent.definition, ec.newState)
+      if (ent.img?.anims?.exists(animKey)) {
+        ent.img.play(animKey)
+      } else {
+        const entdef = window.gameState.entdefs.get(ent.definition)
+        const state = entdef?.states?.find((s) => s?.name === ec.newState)
+        const frame = state?.frames?.[0]
+        if (ent.img != null && frame != null) {
+          ent.img.setFrame(frame)
+        }
+      }
+    }
+
+    if (isCollisionDebugEnabled()) {
+      refreshCollisionDebugOverlay()
     }
   }
 
@@ -657,6 +835,21 @@ export default class GridScene extends Phaser.Scene {
           blocked ? 0.35 : 0.18
         ).setOrigin(0)
         this.layerCollisionDebug.add(cell)
+      }
+    }
+
+    for (const ent of Object.values(this.entities)) {
+      const entdef = window.gameState?.entdefs?.get(ent.definition)
+      for (const rect of entityCollisionRectsWorld(ent, entdef)) {
+        const box = this.add.rectangle(
+          rect.x,
+          rect.y,
+          rect.w,
+          rect.h,
+          0xff9933,
+          0.45
+        ).setOrigin(0)
+        this.layerCollisionDebug.add(box)
       }
     }
 

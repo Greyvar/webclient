@@ -1368,6 +1368,7 @@ export const greyvarproto = $root.greyvarproto = (() => {
 
         function EntityState(p) {
             this.frames = [];
+            this.holds = [];
             if (p)
                 for (var ks = Object.keys(p), i = 0; i < ks.length; ++i)
                     if (p[ks[i]] != null)
@@ -1376,6 +1377,7 @@ export const greyvarproto = $root.greyvarproto = (() => {
 
         EntityState.prototype.name = "";
         EntityState.prototype.frames = $util.emptyArray;
+        EntityState.prototype.holds = $util.emptyArray;
 
         EntityState.create = function create(properties) {
             return new EntityState(properties);
@@ -1390,6 +1392,12 @@ export const greyvarproto = $root.greyvarproto = (() => {
                 w.uint32(18).fork();
                 for (var i = 0; i < m.frames.length; ++i)
                     w.int32(m.frames[i]);
+                w.ldelim();
+            }
+            if (m.holds != null && m.holds.length) {
+                w.uint32(26).fork();
+                for (var i = 0; i < m.holds.length; ++i)
+                    w.int32(m.holds[i]);
                 w.ldelim();
             }
             return w;
@@ -1418,6 +1426,16 @@ export const greyvarproto = $root.greyvarproto = (() => {
                             m.frames.push(r.int32());
                     } else
                         m.frames.push(r.int32());
+                    break;
+                case 3:
+                    if (!(m.holds && m.holds.length))
+                        m.holds = [];
+                    if ((t & 7) === 2) {
+                        var c3 = r.uint32() + r.pos;
+                        while (r.pos < c3)
+                            m.holds.push(r.int32());
+                    } else
+                        m.holds.push(r.int32());
                     break;
                 default:
                     r.skipType(t & 7);
@@ -1448,6 +1466,14 @@ export const greyvarproto = $root.greyvarproto = (() => {
                         return "frames: integer[] expected";
                 }
             }
+            if (m.holds != null && m.hasOwnProperty("holds")) {
+                if (!Array.isArray(m.holds))
+                    return "holds: array expected";
+                for (var i = 0; i < m.holds.length; ++i) {
+                    if (!$util.isInteger(m.holds[i]))
+                        return "holds: integer[] expected";
+                }
+            }
             return null;
         };
 
@@ -1466,6 +1492,14 @@ export const greyvarproto = $root.greyvarproto = (() => {
                     m.frames[i] = d.frames[i] | 0;
                 }
             }
+            if (d.holds) {
+                if (!Array.isArray(d.holds))
+                    throw TypeError(".greyvarproto.EntityState.holds: array expected");
+                m.holds = [];
+                for (var i = 0; i < d.holds.length; ++i) {
+                    m.holds[i] = d.holds[i] | 0;
+                }
+            }
             return m;
         };
 
@@ -1475,6 +1509,7 @@ export const greyvarproto = $root.greyvarproto = (() => {
             var d = {};
             if (o.arrays || o.defaults) {
                 d.frames = [];
+                d.holds = [];
             }
             if (o.defaults) {
                 d.name = "";
@@ -1486,6 +1521,12 @@ export const greyvarproto = $root.greyvarproto = (() => {
                 d.frames = [];
                 for (var j = 0; j < m.frames.length; ++j) {
                     d.frames[j] = m.frames[j];
+                }
+            }
+            if (m.holds && m.holds.length) {
+                d.holds = [];
+                for (var j = 0; j < m.holds.length; ++j) {
+                    d.holds[j] = m.holds[j];
                 }
             }
             return d;

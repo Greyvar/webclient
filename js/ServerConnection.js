@@ -75,17 +75,23 @@ export default class ServerConnection {
         (nextGridId != null && previousGridId !== nextGridId) ||
         (nextWorldId != null && previousWorldId !== nextWorldId)
       )
+      const scrollX = newGrid.transition?.scrollDeltaX ?? 0
+      const scrollY = newGrid.transition?.scrollDeltaY ?? 0
+      const hasScrollTransition = isTransition && newGrid.transition != null && (scrollX !== 0 || scrollY !== 0)
 
       logGreyvar('ServerConnection: grid message received', {
         tileCount: newGrid.tiles?.length,
         entityCount: newGrid.entities?.length,
         gridId: nextGridId,
         isTransition,
+        hasScrollTransition,
         transition: newGrid.transition,
         hasGridField: receivedMessage.grid != null
       })
 
-      if (isTransition) {
+      // Adjacent-map walks use a scroll tween. Teleports / world loads are a hard cut
+      // (onNewGrid) so input and the local player are fully reset.
+      if (hasScrollTransition) {
         window.gameState.onGridTransition(newGrid)
       } else {
         window.gameState.onNewGrid(newGrid)
@@ -102,6 +108,14 @@ export default class ServerConnection {
 
     if (receivedMessage.consoleMessage?.text != null) {
       window.gameConsole?.log(receivedMessage.consoleMessage.text)
+    }
+
+    if (receivedMessage.hudMessage != null) {
+      window.hudScene?.setHudMessage?.(receivedMessage.hudMessage)
+    }
+
+    if (receivedMessage.inventoryUpdate?.items != null) {
+      window.gameState.onInventoryUpdate?.(receivedMessage.inventoryUpdate)
     }
 
     if (receivedMessage.playerJoined != null) {

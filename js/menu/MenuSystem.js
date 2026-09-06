@@ -188,11 +188,18 @@ export default class MenuSystem {
       return
     }
 
-    if (code === 'ArrowLeft' || code === 'Backspace' || key === 'ArrowLeft' || key === 'Backspace') {
+    if (code === 'ArrowLeft' || code === 'KeyA' || code === 'Backspace' ||
+        key === 'ArrowLeft' || key === 'a' || key === 'A' || key === 'Backspace') {
       if (this.stack.length > 1) {
         event.preventDefault?.()
         this.navigateBack()
       }
+      return
+    }
+
+    if (code === 'ArrowRight' || code === 'KeyD' || key === 'ArrowRight' || key === 'd' || key === 'D') {
+      event.preventDefault?.()
+      this.activateFocused()
     }
   }
 
